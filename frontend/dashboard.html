@@ -4,26 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard - SocialFlow</title>
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
-    .stat-card .label { color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-card .value { font-size: 28px; font-weight: 800; margin: 4px 0; }
-    .stat-card .sub { color: var(--text-2); font-size: 12px; }
-    .recent-row { background: var(--bg-1); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 10px; align-items: center; transition: background 0.12s; }
-    .recent-row:hover { background: var(--bg-2); }
-    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
-    .status-draft { background: var(--bg-3); color: var(--text-2); }
-    .status-pending_approval { background: rgba(184,123,26,0.15); color: #b87b1a; }
-    .status-approved { background: rgba(45,134,89,0.15); color: #2d8659; }
-    .status-rejected { background: rgba(196,83,78,0.15); color: #c4534e; }
-    .status-published { background: var(--brand-soft); color: var(--brand-strong); }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .quick {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 18px; transition: all var(--transition);
+    }
+    .quick:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--brand); }
+    .quick .icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--brand-soft), var(--brand-glow));
+      border-radius: 10px; display: grid; place-items: center; color: var(--brand-strong);
+    }
+    .quick .qt { font-weight: 700; font-size: 14px; line-height: 1.2; }
+    .quick .qd { color: var(--text-2); font-size: 12px; }
+    .chart-card { padding: 22px 24px; }
+    .chart-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .chart-card .meta { color: var(--text-3); font-size: 12px; margin-bottom: 18px; }
+    .activity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+    @media (max-width: 960px) { .activity-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
       <a href="/dashboard" class="nav-item active">Dashboard</a>
       <a href="/clientes" class="nav-item">Clientes</a>
       <a href="/personas" class="nav-item">Personas</a>
@@ -39,14 +48,29 @@
 
     <main class="main">
       <div class="page-head">
-        <h1>Dashboard</h1>
-        <span class="muted small" id="user-info">Carregando...</span>
+        <div>
+          <h1>Dashboard</h1>
+          <p class="muted small" id="greeting" style="margin-top:4px;">Carregando...</p>
+        </div>
+        <span class="muted small" id="user-info"></span>
       </div>
+
+      <div class="quick-grid" id="quick-actions"></div>
 
       <div class="stats-grid" id="stats"></div>
 
-      <h3 style="font-size: 14px; margin-bottom: 12px;">Atividade recente</h3>
-      <div id="recent"></div>
+      <div class="activity-grid">
+        <div class="card chart-card">
+          <h3>Atividade dos ultimos 7 dias</h3>
+          <p class="meta">Roteiros criados por dia</p>
+          <div id="chart" style="height: 160px;"></div>
+        </div>
+        <div class="card chart-card">
+          <h3>Atividade recente</h3>
+          <p class="meta">Ultimos roteiros</p>
+          <div id="recent" style="max-height: 220px; overflow-y: auto;"></div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -61,49 +85,142 @@
       return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    function sparkline(data, color) {
+      if (!data || !data.length) return '';
+      const w = 100, h = 36;
+      const max = Math.max(...data, 1);
+      const pts = data.map((v, i) => {
+        const x = data.length > 1 ? (i / (data.length - 1)) * w : w / 2;
+        const y = h - (v / max) * (h - 4) - 2;
+        return `${x},${y}`;
+      }).join(' ');
+      const last = data[data.length - 1];
+      const lastX = w, lastY = h - (last / max) * (h - 4) - 2;
+      return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%; height:36px; overflow:visible;">
+        <polyline points="${pts}" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${lastX}" cy="${lastY}" r="2.5" fill="${color}"/>
+      </svg>`;
+    }
+
+    function barChart(data, color) {
+      if (!data || !data.length) return '';
+      const w = 100, h = 100;
+      const max = Math.max(...data.map(d => d.scripts_created), 1);
+      const barW = (w - (data.length - 1) * 2) / data.length;
+      const bars = data.map((d, i) => {
+        const v = d.scripts_created || 0;
+        const bh = (v / max) * (h - 20);
+        const x = i * (barW + 2);
+        const y = h - bh - 18;
+        const date = new Date(d.day);
+        const dayLabel = date.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3);
+        return `
+          <rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="2" fill="${color}" opacity="${v ? 0.85 : 0.2}"/>
+          <text x="${x + barW/2}" y="${h - 4}" text-anchor="middle" font-size="6" fill="var(--text-3)" font-family="Inter, sans-serif">${dayLabel}</text>
+          ${v > 0 ? `<text x="${x + barW/2}" y="${y - 3}" text-anchor="middle" font-size="6" fill="var(--text-2)" font-weight="600" font-family="Inter, sans-serif">${v}</text>` : ''}
+        `;
+      }).join('');
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%; height:160px;">${bars}</svg>`;
+    }
+
     (async () => {
       const me = await window.requireSession();
       if (!me) return;
-
       const isClient = me.role === 'client';
-      document.getElementById('user-info').innerHTML =
-        `${escapeHtml(me.name)} <span class="muted">&middot; ${escapeHtml(me.organization_name)} (${me.role})</span>`;
+
+      const hour = new Date().getHours();
+      const greet = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+      document.getElementById('greeting').textContent = `${greet}, ${me.name.split(' ')[0]}.`;
+      document.getElementById('user-info').innerHTML = `<span class="muted">${escapeHtml(me.organization_name)} &middot; ${me.role}</span>`;
 
       document.getElementById('logout-btn').addEventListener('click', async () => {
         await window.api.post('/api/auth/logout');
         window.location.href = '/';
       });
 
-      try {
-        const { stats, recent } = await window.api.get('/api/dashboard/stats');
-        document.getElementById('stats').innerHTML = `
-          ${isClient ? '' : `<div class="card stat-card"><div class="label">Clientes ativos</div><div class="value">${stats.clients}</div></div>`}
-          <div class="card stat-card"><div class="label">Aguardando aprovacao</div><div class="value">${stats.pending}</div></div>
-          <div class="card stat-card"><div class="label">Aprovados este mes</div><div class="value">${stats.approved_month}</div></div>
-          ${isClient ? '' : `<div class="card stat-card"><div class="label">Rascunhos</div><div class="value">${stats.drafts}</div></div>`}
-          <div class="card stat-card"><div class="label">Personas</div><div class="value">${stats.personas}</div></div>
-          <div class="card stat-card"><div class="label">Uso de IA</div><div class="value">${me.ia_quota_used}<span style="font-size:14px; color:var(--text-3); font-weight:500;"> / ${me.ia_quota_limit}</span></div></div>
+      // Quick actions
+      const qa = document.getElementById('quick-actions');
+      if (!isClient) {
+        qa.innerHTML = `
+          <a class="quick fade-up" href="/clientes">
+            <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>
+            <div><div class="qt">Novo cliente</div><div class="qd">Cadastrar marca</div></div>
+          </a>
+          <a class="quick fade-up fade-up-1" href="/clientes">
+            <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+            <div><div class="qt">Gerar persona</div><div class="qd">Com IA em 10s</div></div>
+          </a>
+          <a class="quick fade-up fade-up-2" href="/roteiros">
+            <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div><div class="qt">Novo roteiro</div><div class="qd">TOPO / MEIO / FUNDO</div></div>
+          </a>
+          <a class="quick fade-up fade-up-3" href="/carrosseis">
+            <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="21 15 16 10 5 21"/></svg></div>
+            <div><div class="qt">Criar carrossel</div><div class="qd">Template + IA</div></div>
+          </a>
         `;
+      } else {
+        qa.innerHTML = `
+          <a class="quick fade-up" href="/roteiros">
+            <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/></svg></div>
+            <div><div class="qt">Conteudo pra aprovar</div><div class="qd">Ver pendentes</div></div>
+          </a>
+          <a class="quick fade-up fade-up-1" href="/calendario">
+            <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div><div class="qt">Calendario</div><div class="qd">Ver agenda</div></div>
+          </a>
+        `;
+      }
 
+      try {
+        const { stats, recent, weekly } = await window.api.get('/api/dashboard/stats');
+        const scriptsSpark = weekly.map(w => w.scripts_created);
+        const approvedSpark = weekly.map(w => w.approved);
+
+        const cards = [];
+        if (!isClient) cards.push({ label: 'Clientes ativos', value: stats.clients, sub: 'no total', sparkData: null });
+        cards.push({ label: 'Aguardando aprovacao', value: stats.pending, sub: 'precisam de atencao', sparkData: scriptsSpark });
+        cards.push({ label: 'Aprovados este mes', value: stats.approved_month, sub: 'no ciclo atual', sparkData: approvedSpark });
+        if (!isClient) cards.push({ label: 'Rascunhos', value: stats.drafts, sub: 'em producao', sparkData: null });
+        cards.push({ label: 'Personas', value: stats.personas, sub: 'cadastradas', sparkData: null });
+        cards.push({
+          label: 'Uso de IA',
+          value: `${me.ia_quota_used}<span style="font-size:14px; color:var(--text-3); font-weight:500;"> / ${me.ia_quota_limit}</span>`,
+          sub: `${Math.round((me.ia_quota_used / me.ia_quota_limit) * 100)}% do ciclo`,
+          sparkData: null,
+        });
+
+        document.getElementById('stats').innerHTML = cards.map((c, i) => `
+          <div class="card stat-card fade-up" style="animation-delay: ${i * 60}ms;">
+            <div class="label">${c.label}</div>
+            <div class="value">${c.value}</div>
+            <div class="sub">${c.sub}</div>
+            ${c.sparkData ? sparkline(c.sparkData, 'var(--brand)') : ''}
+          </div>
+        `).join('');
+
+        // Bar chart
+        document.getElementById('chart').innerHTML = weekly.every(w => w.scripts_created === 0)
+          ? '<p class="muted small" style="text-align:center; padding: 40px 0;">Nenhuma atividade nos ultimos 7 dias.</p>'
+          : barChart(weekly, '#a0826d');
+
+        // Recent
         const recentDiv = document.getElementById('recent');
         if (recent.length === 0) {
-          recentDiv.innerHTML = `<div class="card" style="text-align:center; padding:40px;">
-            <p class="muted">Nenhuma atividade recente.</p>
-            ${isClient ? '' : '<a href="/clientes" class="btn" style="margin-top:14px;">Adicionar cliente</a>'}
-          </div>`;
+          recentDiv.innerHTML = `<p class="muted small" style="text-align:center; padding: 30px 0;">Sem atividade recente.</p>`;
         } else {
           recentDiv.innerHTML = recent.map(r => `
-            <a href="/roteiro?id=${r.id}" class="recent-row">
-              <div>
-                <div style="font-weight:600;">${escapeHtml(r.title)}</div>
-                <div class="muted small">${escapeHtml(r.client_name)} &middot; ${new Date(r.created_at).toLocaleDateString('pt-BR')}</div>
+            <a href="/roteiro?id=${r.id}" class="recent-row" style="margin-bottom:6px;">
+              <div style="min-width:0;">
+                <div style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 280px;">${escapeHtml(r.title)}</div>
+                <div class="muted" style="font-size:11px;">${escapeHtml(r.client_name)} &middot; ${new Date(r.created_at).toLocaleDateString('pt-BR')}</div>
               </div>
               <span class="status-pill status-${r.status}">${STATUS_LABEL[r.status]}</span>
             </a>
           `).join('');
         }
       } catch (err) {
-        document.getElementById('stats').innerHTML = `<div class="alert alert-error">Erro ao carregar: ${escapeHtml(err.message)}</div>`;
+        document.getElementById('stats').innerHTML = `<div class="alert alert-error">Erro: ${escapeHtml(err.message)}</div>`;
       }
     })();
   </script>

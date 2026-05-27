@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <defs>
+    <linearGradient id="sf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c89c5e"/>
+      <stop offset="55%" stop-color="#a0826d"/>
+      <stop offset="100%" stop-color="#6f5535"/>
+    </linearGradient>
+  </defs>
+  <path d="M11 11 Q 11 6, 16 6 L 26 6 Q 30 6, 30 11 Q 30 15, 26 15 L 18 15 Q 14 15, 14 19 Q 14 23, 18 23 L 26 23 Q 30 23, 30 27 Q 30 31, 26 31 L 14 31"
+        stroke="url(#sf-grad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+</svg>

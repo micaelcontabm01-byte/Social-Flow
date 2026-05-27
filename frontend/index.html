@@ -3,65 +3,220 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SocialFlow - Tudo o que social media precisa, em um so lugar</title>
-  <meta name="description" content="Gere persona, roteiros, carrosseis e planejamento de conteudo com IA. Workflow de aprovacao integrado para agencias e empresarios." />
+  <title>SocialFlow - Sua agencia de social media com IA, em um so painel</title>
+  <meta name="description" content="Persona, roteiros, carrosseis e aprovacao do cliente em um lugar so. Pare de pular entre 7 ferramentas." />
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/assets/css/styles.css" />
 </head>
 <body>
-  <nav class="topbar">
-    <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
-    <div style="display:flex; gap:10px;">
-      <a href="/login" class="btn btn-ghost">Entrar</a>
-      <a href="/signup" class="btn">Criar conta</a>
+  <nav class="landing-nav">
+    <div class="brand-mark"><img src="/assets/img/logo.svg" alt="SocialFlow" />SocialFlow</div>
+    <div class="links">
+      <a href="#features">Recursos</a>
+      <a href="#how">Como funciona</a>
+      <a href="#pricing">Planos</a>
+      <a href="#faq">FAQ</a>
+      <a href="/login" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/signup" class="btn btn-sm">Comecar gratis</a>
     </div>
   </nav>
 
-  <section class="hero">
+  <section class="hero fade-up">
+    <span class="eyebrow">Beta aberto &middot; criado no Brasil 🇧🇷</span>
     <h1>
-      Tudo o que social media precisa,<br />
-      <span class="grad">em um so lugar.</span>
+      Sua agencia de social media,<br />
+      <span class="grad">unificada e turbinada por IA.</span>
     </h1>
     <p class="lead">
-      Persona, roteiros, carrosseis, planejamento e aprovacao de cliente.
-      Pare de pular entre 7 ferramentas. O SocialFlow centraliza seu fluxo com IA.
+      Persona, roteiros, carrosseis, calendario e aprovacao do cliente. Tudo num so painel.
+      Pare de pular entre Notion, Canva, WhatsApp, Trello e ChatGPT.
     </p>
-    <div style="display:flex; gap:10px; justify-content:center;">
-      <a href="/signup" class="btn">Comecar gratis</a>
-      <a href="#features" class="btn btn-ghost">Ver recursos</a>
+    <div class="hero-actions">
+      <a href="/signup" class="btn btn-lg">Comecar gratis &rarr;</a>
+      <a href="#how" class="btn btn-ghost btn-lg">Ver como funciona</a>
+    </div>
+    <div class="hero-meta">
+      <span>Sem cartao de credito</span>
+      <span>Pix &middot; boleto &middot; cartao</span>
+      <span>Cancele quando quiser</span>
     </div>
   </section>
 
-  <section id="features" class="container">
-    <div class="features">
-      <div class="feature-card">
-        <h3>Persona com IA</h3>
-        <p>Descreva o nicho e a IA gera persona completa em segundos: dores, desejos, linguagem, objecoes.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Roteiros TOPO / MEIO / FUNDO</h3>
-        <p>Hook, corpo e CTA gerados de acordo com a etapa do funil e a persona escolhida.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Carrossel em minutos</h3>
-        <p>Templates editaveis + IA preenche texto baseado no seu roteiro. Sem precisar abrir o Canva.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Calendario e planejamento</h3>
-        <p>Organize conteudo, materiais do Drive e visualize o que falta editar para cada cliente.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Aprovacao do cliente</h3>
-        <p>Cliente entra, ve so o que e dele, aprova ou pede alteracao. Sem WhatsApp bagunca.</p>
-      </div>
-      <div class="feature-card">
-        <h3>Colaboradores e clientes</h3>
-        <p>Convide sua equipe e seus clientes. Cada um ve exatamente o que precisa, nada mais.</p>
+  <section class="section" id="features">
+    <div class="container">
+      <h2>O que esta dentro do SocialFlow</h2>
+      <p class="section-sub">Cada tela substitui uma ferramenta que voce usa hoje. Tudo conversa entre si.</p>
+      <div class="feature-grid">
+        <div class="feature-card fade-up">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <h3>Persona com IA</h3>
+          <p>Descreva nicho, publico e objetivo. A IA gera persona completa com dores, desejos e tom em segundos.</p>
+        </div>
+        <div class="feature-card fade-up fade-up-1">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+          <h3>Roteiros prontos pra postar</h3>
+          <p>TOPO, MEIO ou FUNDO do funil. Hook, corpo, CTA, legenda e hashtags adaptados a persona.</p>
+        </div>
+        <div class="feature-card fade-up fade-up-2">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+          <h3>Carrossel em minutos</h3>
+          <p>Templates editaveis + IA preenche o texto. Baixa em PNG e posta direto no Instagram.</p>
+        </div>
+        <div class="feature-card fade-up fade-up-3">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <h3>Aprovacao do cliente</h3>
+          <p>Cliente entra, ve so o que e dele, aprova ou pede alteracao com motivo. Sem WhatsApp bagunca.</p>
+        </div>
+        <div class="feature-card fade-up">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <h3>Calendario integrado</h3>
+          <p>Veja o que esta agendado, o que falta editar e o que ja foi aprovado por cliente.</p>
+        </div>
+        <div class="feature-card fade-up fade-up-1">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <h3>Equipe e clientes</h3>
+          <p>Convide colaboradores pra produzir e clientes pra aprovar. Cada um ve so o que precisa.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <footer style="border-top:1px solid var(--border); padding:24px 0; text-align:center; color:var(--text-3); font-size:13px;">
-    &copy; 2026 SocialFlow
+  <section class="section" id="how" style="background: var(--bg-2);">
+    <div class="container">
+      <h2>Como funciona, na pratica</h2>
+      <p class="section-sub">Em 4 passos voce sai do brainstorming ao conteudo aprovado pronto pra postar.</p>
+      <div class="how-grid">
+        <div class="step fade-up">
+          <div class="step-num">1</div>
+          <h3>Cadastra o cliente</h3>
+          <p>Nome, nicho, Instagram e link do Drive. Pronto, o cliente esta no painel.</p>
+        </div>
+        <div class="step fade-up fade-up-1">
+          <div class="step-num">2</div>
+          <h3>Gera persona com IA</h3>
+          <p>Descreve o publico-alvo. Em 10 segundos a IA monta uma persona completa e editavel.</p>
+        </div>
+        <div class="step fade-up fade-up-2">
+          <div class="step-num">3</div>
+          <h3>Cria roteiros e carrosseis</h3>
+          <p>Escolhe etapa do funil, formato e tema. A IA escreve. Voce ajusta.</p>
+        </div>
+        <div class="step fade-up fade-up-3">
+          <div class="step-num">4</div>
+          <h3>Cliente aprova</h3>
+          <p>Cliente recebe email, entra, aprova ou comenta. Voce posta.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="pricing">
+    <div class="container">
+      <h2>Planos pra cada momento</h2>
+      <p class="section-sub">Comece gratis. Suba quando ganhar mais clientes.</p>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">R$ 0<small>/mes</small></div>
+          <ul>
+            <li>1 cliente</li>
+            <li>10 geracoes IA/mes</li>
+            <li>Persona + Roteiro</li>
+          </ul>
+          <a href="/signup" class="btn btn-ghost btn-block">Comecar gratis</a>
+        </div>
+        <div class="price-card">
+          <div class="plan-name">Starter</div>
+          <div class="plan-price">R$ 49,90<small>/mes</small></div>
+          <ul>
+            <li>2 clientes</li>
+            <li>1 colaborador</li>
+            <li>50 geracoes IA/mes</li>
+            <li>Calendario de conteudo</li>
+          </ul>
+          <a href="/signup" class="btn btn-ghost btn-block">Comecar Starter</a>
+        </div>
+        <div class="price-card featured">
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">R$ 97<small>/mes</small></div>
+          <ul>
+            <li>5 clientes</li>
+            <li>3 colaboradores</li>
+            <li>150 geracoes IA/mes</li>
+            <li>Gerador de Carrossel</li>
+            <li>Aprovacao do cliente</li>
+          </ul>
+          <a href="/signup" class="btn btn-block">Comecar Pro</a>
+        </div>
+        <div class="price-card">
+          <div class="plan-name">Agency</div>
+          <div class="plan-price">R$ 197<small>/mes</small></div>
+          <ul>
+            <li>15 clientes</li>
+            <li>10 colaboradores</li>
+            <li>1500 geracoes IA/mes</li>
+            <li>Suporte prioritario</li>
+          </ul>
+          <a href="/signup" class="btn btn-ghost btn-block">Comecar Agency</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="container-narrow">
+      <h2>Perguntas frequentes</h2>
+      <p class="section-sub">O que mais perguntam antes de comecar.</p>
+      <div>
+        <div class="faq-item">
+          <div class="faq-q">Eu posso usar mesmo sem ter clientes ainda?</div>
+          <div class="faq-a">Pode. O plano Free deixa voce cadastrar 1 cliente (que pode ser voce mesmo) e testar persona + roteiros antes de fechar com gente paga.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">A IA escreve bem em portugues brasileiro?</div>
+          <div class="faq-a">Usamos Claude Haiku 4.5, treinado pra portugues natural. Gera copy adaptada ao tom da sua persona, sem aquele cheirinho de IA gringa traduzida.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Posso convidar meu cliente pra aprovar?</div>
+          <div class="faq-a">Sim. A partir do plano Pro voce manda convite por email, ele entra no painel dele (so ve o conteudo dele) e aprova ou pede alteracao com comentario.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Como funciona o pagamento?</div>
+          <div class="faq-a">Pelo Lastlink. Aceita Pix, boleto e cartao. Sem fidelidade, cancela quando quiser direto pelo painel.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Meus conteudos ficam salvos?</div>
+          <div class="faq-a">Tudo fica salvo na sua conta. Pode editar, baixar PNG do carrossel, exportar legenda pra colar no Instagram.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Tem integracao com Instagram?</div>
+          <div class="faq-a">Hoje voce adiciona o @ do cliente e usa nosso painel pra gerar. Integracao oficial com API do Instagram esta na esteira.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background: var(--bg-2); text-align: center;">
+    <div class="container-narrow">
+      <h2>Pronto pra parar de pular entre ferramentas?</h2>
+      <p class="section-sub">Cria sua conta em 30 segundos. Cartao so quando voce escolher.</p>
+      <div class="hero-actions">
+        <a href="/signup" class="btn btn-lg">Criar minha conta gratis &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="landing-footer">
+    <div class="container">
+      <div class="brand-mark" style="justify-content:center; margin-bottom: 12px;"><img src="/assets/img/logo.svg" alt="SocialFlow" />SocialFlow</div>
+      <p>&copy; 2026 SocialFlow &middot; Feito no Brasil</p>
+    </div>
   </footer>
+
+  <script>
+    document.querySelectorAll('.faq-q').forEach(q => {
+      q.addEventListener('click', () => q.parentElement.classList.toggle('open'));
+    });
+  </script>
 </body>
 </html>

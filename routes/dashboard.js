@@ -31,7 +31,29 @@ router.get('/stats', async (req, res, next) => {
       params
     );
 
-    res.json({ stats: r.rows[0], recent: recent.rows });
+    const weeklyParams = req.role === 'client' ? [req.orgId, req.memberClientId] : [req.orgId];
+    const weeklyClient = req.role === 'client' ? "AND s.client_id = $2" : '';
+
+    const weekly = await query(
+      `WITH days AS (
+         SELECT generate_series(
+           date_trunc('day', now()) - interval '6 days',
+           date_trunc('day', now()),
+           interval '1 day'
+         )::date AS day
+       )
+       SELECT d.day::text AS day,
+              COALESCE(count(s.id)::int, 0) AS scripts_created,
+              COALESCE(SUM(CASE WHEN s.status = 'approved' THEN 1 ELSE 0 END)::int, 0) AS approved
+       FROM days d
+       LEFT JOIN scripts s ON date_trunc('day', s.created_at)::date = d.day
+                          AND s.organization_id = $1 ${weeklyClient}
+       GROUP BY d.day
+       ORDER BY d.day`,
+      weeklyParams
+    );
+
+    res.json({ stats: r.rows[0], recent: recent.rows, weekly: weekly.rows });
   } catch (err) { next(err); }
 });
 
