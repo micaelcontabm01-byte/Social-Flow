@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entrar - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <form class="auth-card" id="login-form">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <h1>Entrar na sua conta</h1>
+      <p class="subtitle">Bem-vindo de volta.</p>
+
+      <div id="alert"></div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="password">Senha</label>
+        <input id="password" type="password" required autocomplete="current-password" minlength="8" />
+      </div>
+
+      <button type="submit" class="btn btn-block" id="submit-btn">Entrar</button>
+
+      <p class="small muted" style="margin-top:16px; text-align:center;">
+        Nao tem conta? <a href="/signup">Criar conta gratis</a>
+      </p>
+    </form>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const form = document.getElementById('login-form');
+    const alertBox = document.getElementById('alert');
+    const btn = document.getElementById('submit-btn');
+
+    function showError(msg) {
+      alertBox.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+    }
+    function clearError() { alertBox.innerHTML = ''; }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+      try {
+        await window.api.post('/api/auth/login', {
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+        });
+        window.location.href = '/dashboard';
+      } catch (err) {
+        showError(err.message || 'Falha ao entrar');
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    });
+  </script>
+</body>
+</html>

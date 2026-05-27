@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Persona - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .persona-name { font-size: 26px; font-weight: 700; }
+    .persona-sub { color: var(--text-2); margin-top: 4px; margin-bottom: 16px; }
+    .sect h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin: 18px 0 8px; }
+    .sect ul { padding-left: 18px; }
+    .sect li { padding: 3px 0; font-size: 14px; }
+    .pill-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { background: var(--bg-3); padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+    .arr-input { display: flex; gap: 6px; margin-bottom: 6px; }
+    .arr-input input { flex: 1; }
+    .badge-ia { background: var(--brand-soft); color: var(--brand-strong); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600; vertical-align: middle; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item active">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <a id="back-link" href="/clientes" class="muted small" style="display:inline-block; margin-bottom:12px;">&larr; Voltar</a>
+      <div class="page-head">
+        <h1 id="persona-title">Carregando...</h1>
+        <div style="display:flex; gap:8px;" id="actions"></div>
+      </div>
+
+      <div id="alert"></div>
+
+      <div id="view-mode" class="card"></div>
+      <div id="edit-mode" class="card" style="display:none;"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const personaId = params.get('id');
+    if (!personaId) location.href = '/personas';
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    let current = null;
+
+    function renderView(p) {
+      $('#view-mode').innerHTML = `
+        <div class="persona-name">${escapeHtml(p.name)}${p.generated_by_ai ? '<span class="badge-ia">IA</span>' : ''}</div>
+        <div class="persona-sub">${escapeHtml(p.profession || '-')} &middot; ${escapeHtml(p.age_range || '-')} &middot; ${escapeHtml(p.gender || '-')} &middot; ${escapeHtml(p.location || '-')} &middot; Renda ${escapeHtml(p.income_range || '-')}</div>
+
+        <div class="sect"><h3>Dores</h3>
+          <ul>${(p.pain_points || []).map(x => `<li>${escapeHtml(x)}</li>`).join('') || '<li class="muted">-</li>'}</ul>
+        </div>
+        <div class="sect"><h3>Desejos</h3>
+          <ul>${(p.desires || []).map(x => `<li>${escapeHtml(x)}</li>`).join('') || '<li class="muted">-</li>'}</ul>
+        </div>
+        <div class="sect"><h3>Objecoes</h3>
+          <ul>${(p.objections || []).map(x => `<li>${escapeHtml(x)}</li>`).join('') || '<li class="muted">-</li>'}</ul>
+        </div>
+        <div class="sect"><h3>Tom de voz</h3>
+          <p style="font-size:14px;">${escapeHtml(p.language_tone || '-')}</p>
+        </div>
+        <div class="sect"><h3>Canais</h3>
+          <div class="pill-list">${(p.channels || []).map(c => `<span class="pill">${escapeHtml(c)}</span>`).join('') || '<span class="muted small">-</span>'}</div>
+        </div>
+      `;
+    }
+
+    function arrayInputs(name, arr) {
+      const items = (arr || []).map((v, i) => `
+        <div class="arr-input">
+          <input name="${name}" value="${escapeHtml(v)}" />
+          <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()">x</button>
+        </div>`).join('');
+      return `<div id="arr-${name}">${items}</div>
+        <button type="button" class="btn btn-ghost small" onclick="addArrayInput('${name}')">+ adicionar</button>`;
+    }
+
+    window.addArrayInput = function (name) {
+      const div = document.createElement('div');
+      div.className = 'arr-input';
+      div.innerHTML = `<input name="${name}" /><button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()">x</button>`;
+      document.getElementById('arr-' + name).appendChild(div);
+    };
+
+    function renderEdit(p) {
+      $('#edit-mode').innerHTML = `
+        <form id="edit-form">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <div class="field"><label>Nome</label><input name="name" value="${escapeHtml(p.name)}" required /></div>
+            <div class="field"><label>Faixa etaria</label><input name="age_range" value="${escapeHtml(p.age_range || '')}" /></div>
+            <div class="field"><label>Genero</label><input name="gender" value="${escapeHtml(p.gender || '')}" /></div>
+            <div class="field"><label>Localizacao</label><input name="location" value="${escapeHtml(p.location || '')}" /></div>
+            <div class="field"><label>Profissao</label><input name="profession" value="${escapeHtml(p.profession || '')}" /></div>
+            <div class="field"><label>Renda</label><input name="income_range" value="${escapeHtml(p.income_range || '')}" /></div>
+          </div>
+          <div class="field"><label>Tom de voz</label><textarea name="language_tone" rows="2">${escapeHtml(p.language_tone || '')}</textarea></div>
+          <div class="field"><label>Dores</label>${arrayInputs('pain_points', p.pain_points)}</div>
+          <div class="field"><label>Desejos</label>${arrayInputs('desires', p.desires)}</div>
+          <div class="field"><label>Objecoes</label>${arrayInputs('objections', p.objections)}</div>
+          <div class="field"><label>Canais</label>${arrayInputs('channels', p.channels)}</div>
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-ghost" id="cancel-edit">Cancelar</button>
+            <button type="submit" class="btn">Salvar alteracoes</button>
+          </div>
+        </form>
+      `;
+      $('#cancel-edit').addEventListener('click', () => setMode('view'));
+      $('#edit-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const data = {
+          name: fd.get('name'),
+          age_range: fd.get('age_range'),
+          gender: fd.get('gender'),
+          location: fd.get('location'),
+          profession: fd.get('profession'),
+          income_range: fd.get('income_range'),
+          language_tone: fd.get('language_tone'),
+          pain_points: fd.getAll('pain_points').filter(Boolean),
+          desires: fd.getAll('desires').filter(Boolean),
+          objections: fd.getAll('objections').filter(Boolean),
+          channels: fd.getAll('channels').filter(Boolean),
+        };
+        try {
+          const r = await window.api.put('/api/personas/' + personaId, data);
+          current = r.persona;
+          renderView(current);
+          setMode('view');
+        } catch (err) {
+          alert('Erro: ' + err.message);
+        }
+      });
+    }
+
+    function setMode(mode) {
+      if (mode === 'edit') {
+        renderEdit(current);
+        $('#view-mode').style.display = 'none';
+        $('#edit-mode').style.display = 'block';
+        $('#actions').innerHTML = '';
+      } else {
+        $('#view-mode').style.display = 'block';
+        $('#edit-mode').style.display = 'none';
+        $('#actions').innerHTML = `
+          <button class="btn btn-ghost" id="edit-btn">Editar</button>
+          <button class="btn btn-ghost" id="delete-btn" style="color:var(--danger);">Excluir</button>
+        `;
+        $('#edit-btn').addEventListener('click', () => setMode('edit'));
+        $('#delete-btn').addEventListener('click', async () => {
+          if (!confirm('Excluir essa persona definitivamente?')) return;
+          await window.api.del('/api/personas/' + personaId);
+          location.href = '/cliente?id=' + current.client_id;
+        });
+      }
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      try {
+        const { persona } = await window.api.get('/api/personas/' + personaId);
+        current = persona;
+        document.title = `${persona.name} - SocialFlow`;
+        $('#persona-title').innerHTML = `${escapeHtml(persona.name)} <small style="font-size:14px; color: var(--text-2); font-weight: 400;">/ ${escapeHtml(persona.client_name)}</small>`;
+        $('#back-link').href = '/cliente?id=' + persona.client_id;
+        renderView(persona);
+        setMode('view');
+      } catch (err) {
+        if (err.status === 404) {
+          alert('Persona nao encontrada');
+          location.href = '/personas';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

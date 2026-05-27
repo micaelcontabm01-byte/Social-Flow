@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roteiros - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .filters select { width: auto; min-width: 160px; }
+    .script-row { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; transition: transform 0.12s, box-shadow 0.12s; }
+    .script-row:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .script-row .title { font-weight: 700; }
+    .script-row .meta { color: var(--text-2); font-size: 13px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-right: 6px; }
+    .tag-topo { background: rgba(45, 134, 89, 0.15); color: #2d8659; }
+    .tag-meio { background: rgba(184, 123, 26, 0.15); color: #b87b1a; }
+    .tag-fundo { background: rgba(196, 83, 78, 0.15); color: #c4534e; }
+    .tag-format { background: var(--bg-3); color: var(--text-1); }
+    .status-draft { background: var(--bg-3); color: var(--text-2); }
+    .status-pending_approval { background: rgba(184, 123, 26, 0.15); color: #b87b1a; }
+    .status-approved { background: rgba(45, 134, 89, 0.15); color: #2d8659; }
+    .status-rejected { background: rgba(196, 83, 78, 0.15); color: #c4534e; }
+    .status-published { background: var(--brand-soft); color: var(--brand-strong); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item active">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Roteiros</h1>
+        <a href="/clientes" class="btn">+ Novo roteiro</a>
+      </div>
+
+      <div class="filters">
+        <select id="f-client"><option value="">Todos os clientes</option></select>
+        <select id="f-funnel">
+          <option value="">Todas etapas</option>
+          <option value="topo">Topo de funil</option>
+          <option value="meio">Meio de funil</option>
+          <option value="fundo">Fundo de funil</option>
+        </select>
+        <select id="f-status">
+          <option value="">Todos status</option>
+          <option value="draft">Rascunho</option>
+          <option value="pending_approval">Aguardando aprovacao</option>
+          <option value="approved">Aprovado</option>
+          <option value="rejected">Rejeitado</option>
+          <option value="published">Publicado</option>
+        </select>
+      </div>
+
+      <div id="list"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const FUNNEL_LABEL = { topo: 'TOPO', meio: 'MEIO', fundo: 'FUNDO' };
+    const STATUS_LABEL = {
+      draft: 'Rascunho',
+      pending_approval: 'Aguardando',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+      published: 'Publicado',
+    };
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function loadClients() {
+      const { clients } = await window.api.get('/api/clients');
+      const sel = document.getElementById('f-client');
+      sel.innerHTML = '<option value="">Todos os clientes</option>' +
+        clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    async function loadScripts() {
+      const params = new URLSearchParams();
+      const c = document.getElementById('f-client').value;
+      const f = document.getElementById('f-funnel').value;
+      const s = document.getElementById('f-status').value;
+      if (c) params.set('client_id', c);
+      if (f) params.set('funnel_stage', f);
+      if (s) params.set('status', s);
+      const { scripts } = await window.api.get('/api/scripts?' + params);
+      const list = document.getElementById('list');
+      if (scripts.length === 0) {
+        list.innerHTML = `<div class="card" style="text-align:center; padding: 60px 20px;">
+          <p class="muted">Nenhum roteiro encontrado.</p>
+          <a href="/clientes" class="btn" style="margin-top: 14px;">Ir para Clientes</a>
+        </div>`;
+        return;
+      }
+      list.innerHTML = scripts.map(sc => `
+        <a href="/roteiro?id=${sc.id}" class="script-row">
+          <div>
+            <div class="title">${escapeHtml(sc.title)}</div>
+            <div class="meta">
+              <span class="tag tag-${sc.funnel_stage}">${FUNNEL_LABEL[sc.funnel_stage]}</span>
+              <span class="tag tag-format">${sc.format}</span>
+              <span class="tag status-${sc.status}">${STATUS_LABEL[sc.status]}</span>
+              ${escapeHtml(sc.client_name)} ${sc.persona_name ? '&middot; ' + escapeHtml(sc.persona_name) : ''}
+            </div>
+          </div>
+          <span style="color: var(--text-3);">&rarr;</span>
+        </a>
+      `).join('');
+    }
+
+    document.getElementById('f-client').addEventListener('change', loadScripts);
+    document.getElementById('f-funnel').addEventListener('change', loadScripts);
+    document.getElementById('f-status').addEventListener('change', loadScripts);
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      await loadClients();
+      await loadScripts();
+    })();
+  </script>
+</body>
+</html>

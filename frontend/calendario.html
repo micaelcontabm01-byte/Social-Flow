@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendario - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .day-block { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+    .day-block h3 { font-size: 13px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .item-row:last-child { border-bottom: none; }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .status-draft { background: var(--bg-3); color: var(--text-2); }
+    .status-pending_approval { background: rgba(184,123,26,0.15); color: #b87b1a; }
+    .status-approved { background: rgba(45,134,89,0.15); color: #2d8659; }
+    .status-published { background: var(--brand-soft); color: var(--brand-strong); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item active">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Calendario de conteudo</h1>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <p class="muted small">
+          Esta visao mostra roteiros agendados (campo "Agendar para") e os ultimos criados. Use o botao no roteiro para agendar.
+        </p>
+      </div>
+
+      <div id="list"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const STATUS_LABEL = { draft: 'Rascunho', pending_approval: 'Aguardando', approved: 'Aprovado', rejected: 'Rejeitado', published: 'Publicado' };
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function groupByDate(scripts) {
+      const groups = {};
+      for (const s of scripts) {
+        const key = s.scheduled_for
+          ? new Date(s.scheduled_for).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
+          : `Criado em ${new Date(s.created_at).toLocaleDateString('pt-BR')}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(s);
+      }
+      return groups;
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+
+      const { scripts } = await window.api.get('/api/scripts');
+      if (scripts.length === 0) {
+        document.getElementById('list').innerHTML = `<div class="card" style="text-align:center; padding:40px;">
+          <p class="muted">Sem conteudo no calendario ainda.</p>
+        </div>`;
+        return;
+      }
+      const groups = groupByDate(scripts);
+      document.getElementById('list').innerHTML = Object.entries(groups).map(([date, items]) => `
+        <div class="day-block">
+          <h3>${escapeHtml(date)}</h3>
+          ${items.map(s => `
+            <a href="/roteiro?id=${s.id}" class="item-row" style="text-decoration:none; color:var(--text-1);">
+              <div>
+                <strong>${escapeHtml(s.title)}</strong>
+                <span class="muted small">&middot; ${escapeHtml(s.client_name)} &middot; ${s.format}</span>
+              </div>
+              <span class="status-pill status-${s.status}">${STATUS_LABEL[s.status]}</span>
+            </a>
+          `).join('')}
+        </div>
+      `).join('');
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planos e cobranca - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .plan-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .plan-card.current { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+    .plan-card.recommended::before {
+      content: 'Recomendado';
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--brand-hover);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+    .plan-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .plan-price { font-size: 28px; font-weight: 800; color: var(--text-1); margin-bottom: 4px; }
+    .plan-price small { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    .plan-features { list-style: none; padding: 0; margin: 16px 0; }
+    .plan-features li {
+      padding: 6px 0;
+      font-size: 14px;
+      color: var(--text-2);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .plan-features li::before {
+      content: '+';
+      color: var(--brand);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .quota-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-3);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .quota-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--brand), var(--brand-hover));
+      transition: width 0.3s;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--brand-soft);
+      color: var(--brand-strong);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/persona" class="nav-item">Persona</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item active">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Planos e cobranca</h1>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+          <div>
+            <p class="muted small">Plano atual</p>
+            <p style="font-size:24px; font-weight:700; margin: 4px 0;" id="current-plan">-</p>
+            <p class="muted small" id="current-price">-</p>
+          </div>
+          <div style="text-align:right; min-width: 220px;">
+            <p class="muted small">Uso de IA neste ciclo</p>
+            <p style="font-size:18px; font-weight:600;" id="quota-text">- / -</p>
+            <div class="quota-bar"><div class="quota-bar-fill" id="quota-fill" style="width:0%"></div></div>
+            <p class="muted small" style="margin-top:6px;" id="quota-reset">-</p>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="font-size:18px; margin-bottom:16px;">Escolha seu plano</h2>
+      <div class="plans-grid" id="plans-grid"></div>
+
+      <p class="muted small">
+        Pagamento processado pela Lastlink (Pix, boleto, cartao). Pode cancelar quando quiser.
+      </p>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    function planButton(plan, currentCode) {
+      if (plan.code === 'free') {
+        return plan.code === currentCode
+          ? '<button class="btn btn-ghost btn-block" disabled>Plano atual</button>'
+          : '<span class="muted small">Plano gratuito</span>';
+      }
+      if (plan.code === currentCode) {
+        return '<button class="btn btn-ghost btn-block" disabled>Plano atual</button>';
+      }
+      const checkoutUrl = `/api/billing/checkout/${plan.code}`;
+      return `<a href="${checkoutUrl}" class="btn btn-block">Assinar ${plan.name}</a>`;
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+
+      const [billing, plansResp] = await Promise.all([
+        window.api.get('/api/billing/me'),
+        window.api.get('/api/billing/plans'),
+      ]);
+
+      const org = billing.organization;
+      document.getElementById('current-plan').textContent = org.plan_name || org.plan_code;
+      document.getElementById('current-price').textContent =
+        plansResp.plans.find(p => p.code === org.plan_code)?.price_formatted || 'Gratis';
+
+      const usedPct = org.ia_quota_limit > 0
+        ? Math.round((org.ia_quota_used / org.ia_quota_limit) * 100)
+        : 0;
+      document.getElementById('quota-text').textContent = `${org.ia_quota_used} / ${org.ia_quota_limit}`;
+      document.getElementById('quota-fill').style.width = Math.min(100, usedPct) + '%';
+
+      if (org.ia_quota_reset_at) {
+        const reset = new Date(org.ia_quota_reset_at);
+        document.getElementById('quota-reset').textContent =
+          `Renova em ${reset.toLocaleDateString('pt-BR')}`;
+      }
+
+      const grid = document.getElementById('plans-grid');
+      grid.innerHTML = plansResp.plans.map(p => `
+        <div class="plan-card ${p.code === org.plan_code ? 'current' : ''} ${p.code === 'pro' ? 'recommended' : ''}">
+          <div class="plan-name">${p.name}</div>
+          <div class="plan-price">
+            ${p.price_formatted}
+            ${p.price_cents > 0 ? '<small>/mes</small>' : ''}
+          </div>
+          <ul class="plan-features">
+            ${p.features.map(f => `<li>${f}</li>`).join('')}
+          </ul>
+          <div style="margin-top: auto;">
+            ${planButton(p, org.plan_code)}
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+    })();
+  </script>
+</body>
+</html>

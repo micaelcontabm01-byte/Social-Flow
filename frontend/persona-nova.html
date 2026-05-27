@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerar nova persona - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .gen-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .gen-layout { grid-template-columns: 1fr; } }
+    .pill-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .pill { background: var(--bg-3); padding: 4px 10px; border-radius: 12px; font-size: 12px; color: var(--text-1); }
+    .persona-preview h3 { font-size: 14px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 6px; }
+    .persona-preview h3:first-child { margin-top: 0; }
+    .persona-preview ul { padding-left: 20px; }
+    .persona-preview li { font-size: 14px; margin-bottom: 4px; }
+    .preview-name { font-size: 22px; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+    .preview-sub { color: var(--text-2); font-size: 14px; margin-bottom: 18px; }
+    .loading-dots::after {
+      content: '.'; animation: dots 1.2s steps(3) infinite;
+    }
+    @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item active">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <a id="back-link" class="muted small" style="display:inline-block; margin-bottom:12px;">&larr; Voltar</a>
+      <div class="page-head">
+        <h1>Gerar persona com IA</h1>
+        <span class="muted small" id="quota-info"></span>
+      </div>
+
+      <div id="alert"></div>
+
+      <div class="gen-layout">
+        <div class="card">
+          <h3 style="margin-bottom:14px;">Informacoes para a IA</h3>
+          <form id="gen-form">
+            <div class="field">
+              <label>Cliente</label>
+              <p style="font-weight:600;" id="client-display">Carregando...</p>
+            </div>
+            <div class="field">
+              <label for="niche">Nicho / segmento</label>
+              <input id="niche" placeholder="Ex: Confeitaria artesanal de bolos veganos" />
+            </div>
+            <div class="field">
+              <label for="target">Publico-alvo (descricao breve)</label>
+              <input id="target" placeholder="Ex: Mulheres 25-40, urbanas, preocupadas com saude" />
+            </div>
+            <div class="field">
+              <label for="goal">Objetivo principal do negocio</label>
+              <input id="goal" placeholder="Ex: Aumentar pedidos no Instagram" />
+            </div>
+            <div class="field">
+              <label for="tone">Tom de voz desejado</label>
+              <input id="tone" placeholder="Ex: Acolhedor, divertido, sem ser infantil" />
+            </div>
+            <div class="field">
+              <label for="notes">Observacoes adicionais</label>
+              <textarea id="notes" rows="3" placeholder="Qualquer informacao relevante"></textarea>
+            </div>
+            <button type="submit" class="btn btn-block" id="gen-btn">Gerar persona com IA</button>
+          </form>
+        </div>
+
+        <div class="card" id="preview-card" style="min-height: 300px;">
+          <div id="empty-preview" style="color:var(--text-3); text-align:center; padding: 60px 20px;">
+            <p>A persona gerada vai aparecer aqui.</p>
+            <p class="small" style="margin-top:8px;">Preencha o formulario e clique em "Gerar".</p>
+          </div>
+          <div id="loading-preview" style="display:none; text-align:center; padding: 60px 20px;">
+            <p>Gerando persona com IA<span class="loading-dots"></span></p>
+            <p class="small muted" style="margin-top:8px;">Pode levar 5-15 segundos.</p>
+          </div>
+          <div id="result-preview" style="display:none;" class="persona-preview"></div>
+          <div id="result-actions" style="display:none; gap:10px; margin-top:20px;">
+            <button class="btn btn-ghost" id="regen-btn">Gerar outra</button>
+            <button class="btn" id="save-btn">Salvar persona</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const clientId = params.get('client_id');
+    if (!clientId) location.href = '/clientes';
+
+    $('#back-link').href = `/cliente?id=${clientId}`;
+
+    let generatedData = null;
+    let rawInput = null;
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renderPreview(p) {
+      $('#empty-preview').style.display = 'none';
+      $('#loading-preview').style.display = 'none';
+      $('#result-preview').style.display = 'block';
+      $('#result-actions').style.display = 'flex';
+      $('#result-preview').innerHTML = `
+        <div class="preview-name">${escapeHtml(p.name)}</div>
+        <div class="preview-sub">${escapeHtml(p.profession || '')} ${p.age_range ? '&middot; ' + escapeHtml(p.age_range) + ' anos' : ''} ${p.location ? '&middot; ' + escapeHtml(p.location) : ''}</div>
+
+        <h3>Perfil</h3>
+        <p style="font-size:14px;">${escapeHtml(p.gender || '-')} &middot; Renda ${escapeHtml(p.income_range || '-')}</p>
+
+        <h3>Dores</h3>
+        <ul>${(p.pain_points || []).map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+
+        <h3>Desejos</h3>
+        <ul>${(p.desires || []).map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+
+        <h3>Objecoes</h3>
+        <ul>${(p.objections || []).map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+
+        <h3>Tom de voz</h3>
+        <p style="font-size:14px;">${escapeHtml(p.language_tone || '-')}</p>
+
+        <h3>Canais</h3>
+        <div class="pill-list">${(p.channels || []).map(c => `<span class="pill">${escapeHtml(c)}</span>`).join('')}</div>
+      `;
+    }
+
+    $('#gen-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('#gen-btn').disabled = true;
+      $('#gen-btn').textContent = 'Gerando...';
+      $('#alert').innerHTML = '';
+      $('#empty-preview').style.display = 'none';
+      $('#result-preview').style.display = 'none';
+      $('#result-actions').style.display = 'none';
+      $('#loading-preview').style.display = 'block';
+
+      try {
+        const body = {
+          client_id: clientId,
+          niche: $('#niche').value,
+          target: $('#target').value,
+          goal: $('#goal').value,
+          tone: $('#tone').value,
+          notes: $('#notes').value,
+        };
+        const resp = await window.api.post('/api/personas/generate', body);
+        generatedData = resp.persona;
+        rawInput = resp.raw_input;
+        renderPreview(generatedData);
+        if (resp.quota) {
+          $('#quota-info').textContent = `IA: ${resp.quota.used}/${resp.quota.limit}`;
+        }
+      } catch (err) {
+        $('#loading-preview').style.display = 'none';
+        $('#empty-preview').style.display = 'block';
+        if (err.status === 429) {
+          $('#alert').innerHTML = `<div class="alert alert-error">Voce atingiu o limite de IA do plano. <a href="/billing">Faca upgrade</a>.</div>`;
+        } else if (err.status === 502) {
+          $('#alert').innerHTML = `<div class="alert alert-error">A IA retornou resposta invalida. Tente novamente.</div>`;
+        } else {
+          $('#alert').innerHTML = `<div class="alert alert-error">${escapeHtml(err.message || 'Erro ao gerar')}</div>`;
+        }
+      } finally {
+        $('#gen-btn').disabled = false;
+        $('#gen-btn').textContent = 'Gerar persona com IA';
+      }
+    });
+
+    $('#regen-btn').addEventListener('click', () => {
+      generatedData = null;
+      $('#result-preview').style.display = 'none';
+      $('#result-actions').style.display = 'none';
+      $('#empty-preview').style.display = 'block';
+    });
+
+    $('#save-btn').addEventListener('click', async () => {
+      if (!generatedData) return;
+      $('#save-btn').disabled = true;
+      try {
+        const resp = await window.api.post('/api/personas', {
+          client_id: clientId,
+          ...generatedData,
+          raw_input: rawInput,
+          generated_by_ai: true,
+        });
+        location.href = `/persona?id=${resp.persona.id}`;
+      } catch (err) {
+        alert('Erro ao salvar: ' + err.message);
+        $('#save-btn').disabled = false;
+      }
+    });
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      $('#quota-info').textContent = `IA: ${me.ia_quota_used}/${me.ia_quota_limit}`;
+      const { client } = await window.api.get('/api/clients/' + clientId);
+      $('#client-display').textContent = client.name + (client.niche ? ' (' + client.niche + ')' : '');
+      if (client.niche) $('#niche').value = client.niche;
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criar conta - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <form class="auth-card" id="signup-form">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <h1>Criar sua conta</h1>
+      <p class="subtitle">Comece gratis. Sem cartao de credito.</p>
+
+      <div id="alert"></div>
+
+      <div class="field">
+        <label for="name">Nome completo</label>
+        <input id="name" type="text" required minlength="2" />
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="password">Senha (minimo 8 caracteres)</label>
+        <input id="password" type="password" required autocomplete="new-password" minlength="8" />
+      </div>
+
+      <button type="submit" class="btn btn-block" id="submit-btn">Criar conta</button>
+
+      <p class="small muted" style="margin-top:16px; text-align:center;">
+        Ja tem conta? <a href="/login">Entrar</a>
+      </p>
+    </form>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const form = document.getElementById('signup-form');
+    const alertBox = document.getElementById('alert');
+    const btn = document.getElementById('submit-btn');
+
+    function showError(msg) {
+      alertBox.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.innerHTML = '';
+      btn.disabled = true;
+      btn.textContent = 'Criando...';
+      try {
+        await window.api.post('/api/auth/signup', {
+          name: document.getElementById('name').value.trim(),
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+        });
+        window.location.href = '/dashboard';
+      } catch (err) {
+        showError(err.message || 'Falha ao criar conta');
+        btn.disabled = false;
+        btn.textContent = 'Criar conta';
+      }
+    });
+  </script>
+</body>
+</html>

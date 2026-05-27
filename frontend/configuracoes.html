@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuracoes - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--bg-2); border-radius: var(--radius-sm); margin-bottom: 8px; gap: 10px; }
+    .row .info { flex: 1; min-width: 0; }
+    .row .name { font-weight: 600; }
+    .row .meta { color: var(--text-2); font-size: 12px; }
+    .role-pill { background: var(--brand-soft); color: var(--brand-strong); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .role-owner { background: rgba(45, 134, 89, 0.15); color: #2d8659; }
+    .role-collaborator { background: var(--brand-soft); color: var(--brand-strong); }
+    .role-client { background: rgba(184, 123, 26, 0.15); color: #b87b1a; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(40,30,20,0.5); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--bg-1); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 460px; box-shadow: var(--shadow-lg); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item active">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Configuracoes</h1>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 14px;">
+          <h3>Membros</h3>
+          <button class="btn" id="invite-btn">+ Convidar</button>
+        </div>
+        <div id="members-list">Carregando...</div>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <h3 style="margin-bottom: 14px;">Convites pendentes</h3>
+        <div id="invites-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="invite-modal">
+    <div class="modal">
+      <h2 style="font-size:18px; margin-bottom: 12px;">Convidar pessoa</h2>
+      <form id="invite-form">
+        <div id="invite-alert"></div>
+        <div class="field">
+          <label for="i-email">Email</label>
+          <input id="i-email" type="email" required maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="i-role">Funcao</label>
+          <select id="i-role">
+            <option value="collaborator">Colaborador (cria/edita conteudo)</option>
+            <option value="client">Cliente (so visualiza e aprova)</option>
+          </select>
+        </div>
+        <div class="field" id="client-field" style="display:none;">
+          <label for="i-client">Vincular ao cliente</label>
+          <select id="i-client" required></select>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost" id="cancel-invite">Cancelar</button>
+          <button type="submit" class="btn">Enviar convite</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    let myRole = null;
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    async function loadMembers() {
+      const { members } = await window.api.get('/api/invitations/members');
+      $('#members-list').innerHTML = members.map(m => `
+        <div class="row">
+          <div class="info">
+            <div class="name">${escapeHtml(m.name)} <span class="role-pill role-${m.role}">${m.role}</span></div>
+            <div class="meta">${escapeHtml(m.email)} ${m.client_name ? '&middot; cliente: ' + escapeHtml(m.client_name) : ''}</div>
+          </div>
+          ${m.role !== 'owner' && myRole === 'owner' ? `<button class="btn btn-ghost" data-remove="${m.id}" style="color:var(--danger);">Remover</button>` : ''}
+        </div>
+      `).join('');
+      document.querySelectorAll('[data-remove]').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm('Remover esse membro?')) return;
+          await window.api.del('/api/invitations/members/' + b.dataset.remove);
+          await loadMembers();
+        });
+      });
+    }
+
+    async function loadInvites() {
+      const { invitations } = await window.api.get('/api/invitations');
+      const pending = invitations.filter(i => !i.accepted_at);
+      if (pending.length === 0) {
+        $('#invites-list').innerHTML = '<p class="muted small">Sem convites pendentes.</p>';
+        return;
+      }
+      $('#invites-list').innerHTML = pending.map(i => `
+        <div class="row">
+          <div class="info">
+            <div class="name">${escapeHtml(i.email)} <span class="role-pill role-${i.role}">${i.role}</span></div>
+            <div class="meta">Expira em ${new Date(i.expires_at).toLocaleDateString('pt-BR')}${i.client_name ? ' &middot; ' + escapeHtml(i.client_name) : ''}</div>
+          </div>
+          ${myRole === 'owner' ? `<button class="btn btn-ghost" data-cancel="${i.id}" style="color:var(--danger);">Cancelar</button>` : ''}
+        </div>
+      `).join('');
+      document.querySelectorAll('[data-cancel]').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm('Cancelar esse convite?')) return;
+          await window.api.del('/api/invitations/' + b.dataset.cancel);
+          await loadInvites();
+        });
+      });
+    }
+
+    async function loadClients() {
+      const { clients } = await window.api.get('/api/clients');
+      const sel = $('#i-client');
+      sel.innerHTML = '<option value="">Selecione...</option>' +
+        clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    $('#invite-btn').addEventListener('click', () => $('#invite-modal').classList.add('open'));
+    $('#cancel-invite').addEventListener('click', () => $('#invite-modal').classList.remove('open'));
+
+    $('#i-role').addEventListener('change', (e) => {
+      $('#client-field').style.display = e.target.value === 'client' ? 'block' : 'none';
+    });
+
+    $('#invite-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('#invite-alert').innerHTML = '';
+      try {
+        const role = $('#i-role').value;
+        await window.api.post('/api/invitations', {
+          email: $('#i-email').value,
+          role,
+          client_id: role === 'client' ? $('#i-client').value : null,
+        });
+        $('#invite-modal').classList.remove('open');
+        $('#invite-form').reset();
+        $('#client-field').style.display = 'none';
+        await loadInvites();
+      } catch (err) {
+        $('#invite-alert').innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+      }
+    });
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      myRole = me.role;
+      if (myRole !== 'owner') {
+        $('#invite-btn').style.display = 'none';
+      }
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      await Promise.all([loadMembers(), loadInvites(), loadClients()]);
+    })();
+  </script>
+</body>
+</html>

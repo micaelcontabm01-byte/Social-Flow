@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clientes - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .client-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+    .client-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .client-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+    .client-niche { color: var(--text-2); font-size: 13px; margin-bottom: 12px; }
+    .client-stats { display: flex; gap: 12px; font-size: 12px; color: var(--text-3); }
+    .empty { padding: 60px 24px; text-align: center; color: var(--text-2); }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(40, 30, 20, 0.5); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--bg-1); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow: auto; box-shadow: var(--shadow-lg); }
+    .modal h2 { font-size: 18px; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item active">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Clientes</h1>
+        <button class="btn" id="new-btn">+ Novo cliente</button>
+      </div>
+
+      <div id="alert"></div>
+      <div id="list"></div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <h2>Novo cliente</h2>
+      <form id="form">
+        <div id="form-alert"></div>
+        <div class="field">
+          <label for="name">Nome do cliente *</label>
+          <input id="name" name="name" required maxlength="120" />
+        </div>
+        <div class="field">
+          <label for="niche">Nicho / segmento</label>
+          <input id="niche" name="niche" placeholder="Ex: Restaurante japones em SP" maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="instagram_handle">@ do Instagram</label>
+          <input id="instagram_handle" name="instagram_handle" placeholder="sem o @" maxlength="50" />
+        </div>
+        <div class="field">
+          <label for="drive_folder_url">URL da pasta no Drive</label>
+          <input id="drive_folder_url" name="drive_folder_url" type="url" placeholder="https://drive.google.com/..." />
+        </div>
+        <div class="field">
+          <label for="notes">Observacoes</label>
+          <textarea id="notes" name="notes" rows="3" maxlength="2000"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancel-btn">Cancelar</button>
+          <button type="submit" class="btn" id="save-btn">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const modal = $('#modal');
+    const form = $('#form');
+
+    function openModal() { modal.classList.add('open'); $('#name').focus(); }
+    function closeModal() { modal.classList.remove('open'); form.reset(); $('#form-alert').innerHTML = ''; }
+
+    async function loadList() {
+      try {
+        const { clients } = await window.api.get('/api/clients');
+        if (clients.length === 0) {
+          $('#list').innerHTML = `
+            <div class="empty">
+              <p style="font-size:18px; margin-bottom:8px;">Nenhum cliente ainda</p>
+              <p class="small">Cadastre o primeiro cliente para comecar a gerar persona, roteiros e carrosseis.</p>
+            </div>`;
+          return;
+        }
+        $('#list').innerHTML = `<div class="clients-grid">${clients.map(c => `
+          <a class="client-card" href="/cliente?id=${c.id}">
+            <div class="client-name">${escapeHtml(c.name)}</div>
+            <div class="client-niche">${escapeHtml(c.niche || 'Sem nicho definido')}</div>
+            <div class="client-stats">
+              <span>${c.personas_count} persona${c.personas_count == 1 ? '' : 's'}</span>
+              ${c.instagram_handle ? `<span>@${escapeHtml(c.instagram_handle)}</span>` : ''}
+            </div>
+          </a>
+        `).join('')}</div>`;
+      } catch (err) {
+        $('#list').innerHTML = `<div class="alert alert-error">Erro ao carregar: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('#save-btn').disabled = true;
+      $('#form-alert').innerHTML = '';
+      const fd = new FormData(form);
+      const data = Object.fromEntries(fd.entries());
+      try {
+        await window.api.post('/api/clients', data);
+        closeModal();
+        await loadList();
+      } catch (err) {
+        if (err.status === 402) {
+          $('#form-alert').innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}. <a href="/billing">Faca upgrade do plano</a>.</div>`;
+        } else {
+          $('#form-alert').innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+        }
+      } finally {
+        $('#save-btn').disabled = false;
+      }
+    });
+
+    $('#new-btn').addEventListener('click', openModal);
+    $('#cancel-btn').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      await loadList();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personas - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .persona-row { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; transition: transform 0.12s, box-shadow 0.12s; }
+    .persona-row:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .persona-row .name { font-weight: 700; }
+    .persona-row .meta { color: var(--text-2); font-size: 13px; }
+    .badge-ia { background: var(--brand-soft); color: var(--brand-strong); font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item active">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Personas</h1>
+      </div>
+      <div id="list"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      const { personas } = await window.api.get('/api/personas');
+      if (personas.length === 0) {
+        document.getElementById('list').innerHTML = `
+          <div class="card" style="text-align:center; padding: 60px 20px;">
+            <p class="muted">Voce ainda nao criou nenhuma persona.</p>
+            <a href="/clientes" class="btn" style="margin-top: 14px;">Ir para Clientes</a>
+            <p class="muted small" style="margin-top: 10px;">Persona e sempre criada dentro de um cliente.</p>
+          </div>`;
+        return;
+      }
+      document.getElementById('list').innerHTML = personas.map(p => `
+        <a href="/persona?id=${p.id}" class="persona-row">
+          <div>
+            <div class="name">${escapeHtml(p.name)} ${p.generated_by_ai ? '<span class="badge-ia">IA</span>' : ''}</div>
+            <div class="meta">${escapeHtml(p.client_name)} &middot; ${escapeHtml(p.profession || '-')} &middot; ${escapeHtml(p.age_range || '-')}</div>
+          </div>
+          <span style="color: var(--text-3);">&rarr;</span>
+        </a>
+      `).join('');
+    })();
+  </script>
+</body>
+</html>

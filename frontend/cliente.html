@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cliente - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; gap: 4px; }
+    .tab { padding: 10px 18px; cursor: pointer; color: var(--text-2); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; font-size: 14px; }
+    .tab:hover { color: var(--text-1); }
+    .tab.active { color: var(--brand-strong); border-bottom-color: var(--brand-hover); font-weight: 600; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .info-item { background: var(--bg-2); padding: 12px 14px; border-radius: var(--radius-sm); }
+    .info-item label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin: 0 0 4px; }
+    .info-item p { font-size: 15px; color: var(--text-1); }
+    .persona-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; transition: transform 0.12s, box-shadow 0.12s; }
+    .persona-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .persona-card .name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+    .persona-card .meta { color: var(--text-2); font-size: 13px; margin-bottom: 10px; }
+    .badge-ia { background: var(--brand-soft); color: var(--brand-strong); font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item active">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <a href="/clientes" class="muted small" style="display:inline-block; margin-bottom:12px;">&larr; Voltar para Clientes</a>
+      <div class="page-head">
+        <h1 id="client-name">Carregando...</h1>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost" id="edit-btn">Editar</button>
+          <button class="btn btn-ghost" id="delete-btn" style="color:var(--danger);">Arquivar</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="overview">Visao geral</div>
+        <div class="tab" data-tab="personas">Personas</div>
+        <div class="tab" data-tab="roteiros">Roteiros</div>
+        <div class="tab" data-tab="carrosseis">Carrosseis</div>
+        <div class="tab" data-tab="materiais">Materiais</div>
+      </div>
+
+      <div class="tab-content active" id="tab-overview">
+        <div class="card">
+          <div class="info-grid" id="info-grid"></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-personas">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3>Personas deste cliente</h3>
+          <a class="btn" id="new-persona-btn">+ Gerar nova com IA</a>
+        </div>
+        <div id="personas-list"></div>
+      </div>
+
+      <div class="tab-content" id="tab-roteiros">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3>Roteiros deste cliente</h3>
+          <a class="btn" id="new-script-btn">+ Gerar novo com IA</a>
+        </div>
+        <div id="scripts-list"></div>
+      </div>
+
+      <div class="tab-content" id="tab-carrosseis">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3>Carrosseis deste cliente</h3>
+          <a class="btn" id="new-carousel-btn">+ Novo carrossel</a>
+        </div>
+        <div id="carousels-list"></div>
+      </div>
+
+      <div class="tab-content" id="tab-materiais">
+        <div class="card">
+          <h3 style="margin-bottom:8px;">Pasta do Drive</h3>
+          <p class="muted small" style="margin-bottom:12px;">Link da pasta do Google Drive deste cliente.</p>
+          <div id="drive-area"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const clientId = params.get('id');
+
+    if (!clientId) location.href = '/clientes';
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    document.querySelectorAll('.tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        $('#tab-' + t.dataset.tab).classList.add('active');
+      });
+    });
+
+    async function loadClient() {
+      const { client } = await window.api.get('/api/clients/' + clientId);
+      $('#client-name').textContent = client.name;
+      document.title = `${client.name} - SocialFlow`;
+
+      $('#info-grid').innerHTML = `
+        <div class="info-item"><label>Nicho</label><p>${escapeHtml(client.niche || '-')}</p></div>
+        <div class="info-item"><label>Instagram</label><p>${client.instagram_handle ? '@' + escapeHtml(client.instagram_handle) : '-'}</p></div>
+        <div class="info-item"><label>Pasta Drive</label><p>${client.drive_folder_url ? `<a href="${escapeHtml(client.drive_folder_url)}" target="_blank">Abrir Drive &rarr;</a>` : '-'}</p></div>
+        <div class="info-item"><label>Cadastrado em</label><p>${new Date(client.created_at).toLocaleDateString('pt-BR')}</p></div>
+        ${client.notes ? `<div class="info-item" style="grid-column: 1/-1;"><label>Observacoes</label><p>${escapeHtml(client.notes)}</p></div>` : ''}
+      `;
+
+      $('#drive-area').innerHTML = client.drive_folder_url
+        ? `<a href="${escapeHtml(client.drive_folder_url)}" target="_blank" class="btn">Abrir pasta no Drive</a>`
+        : `<p class="muted small">Nenhuma pasta vinculada. Edite o cliente para adicionar.</p>`;
+
+      $('#new-persona-btn').href = `/persona-nova?client_id=${client.id}`;
+      $('#new-script-btn').href = `/roteiro-novo?client_id=${client.id}`;
+      $('#new-carousel-btn').href = `/carrossel-novo?client_id=${client.id}`;
+    }
+
+    async function loadCarousels() {
+      const { carousels } = await window.api.get('/api/carousels?client_id=' + clientId);
+      const STATUS_LABEL = { draft: 'Rascunho', pending_approval: 'Aguardando', approved: 'Aprovado', rejected: 'Rejeitado', published: 'Publicado' };
+      if (carousels.length === 0) {
+        $('#carousels-list').innerHTML = `
+          <div class="card" style="text-align:center; padding:40px;">
+            <p class="muted">Esse cliente ainda nao tem carrosseis.</p>
+            <a href="/carrossel-novo?client_id=${clientId}" class="btn" style="margin-top:14px;">Criar primeiro carrossel</a>
+          </div>`;
+        return;
+      }
+      $('#carousels-list').innerHTML = carousels.map(c => `
+        <a class="persona-card" href="/carrossel?id=${c.id}">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div style="min-width:0;">
+              <div class="name">${escapeHtml(c.title)}</div>
+              <div class="meta" style="font-size:12px;">
+                <span class="badge-ia" style="background:var(--bg-3); color:var(--text-2); margin-right:4px;">${escapeHtml(c.template_id)}</span>
+                ${escapeHtml(STATUS_LABEL[c.status])}
+              </div>
+            </div>
+            ${c.generated_by_ai ? '<span class="badge-ia">IA</span>' : ''}
+          </div>
+        </a>
+      `).join('');
+    }
+
+    async function loadScripts() {
+      const { scripts } = await window.api.get('/api/scripts?client_id=' + clientId);
+      const FUNNEL_LABEL = { topo: 'TOPO', meio: 'MEIO', fundo: 'FUNDO' };
+      const STATUS_LABEL = {
+        draft: 'Rascunho', pending_approval: 'Aguardando', approved: 'Aprovado',
+        rejected: 'Rejeitado', published: 'Publicado',
+      };
+      if (scripts.length === 0) {
+        $('#scripts-list').innerHTML = `
+          <div class="card" style="text-align:center; padding:40px;">
+            <p class="muted">Esse cliente ainda nao tem roteiros.</p>
+            <a href="/roteiro-novo?client_id=${clientId}" class="btn" style="margin-top:14px;">Gerar primeiro roteiro com IA</a>
+          </div>`;
+        return;
+      }
+      $('#scripts-list').innerHTML = scripts.map(s => `
+        <a class="persona-card" href="/roteiro?id=${s.id}">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div style="min-width:0;">
+              <div class="name">${escapeHtml(s.title)}</div>
+              <div class="meta" style="font-size:12px;">
+                <span class="badge-ia" style="background:var(--bg-3); color:var(--text-2); margin-right:4px;">${FUNNEL_LABEL[s.funnel_stage]}</span>
+                <span class="badge-ia" style="background:var(--bg-3); color:var(--text-2); margin-right:4px;">${s.format}</span>
+                ${escapeHtml(STATUS_LABEL[s.status])}
+              </div>
+            </div>
+            ${s.generated_by_ai ? '<span class="badge-ia">IA</span>' : ''}
+          </div>
+        </a>
+      `).join('');
+    }
+
+    async function loadPersonas() {
+      const { personas } = await window.api.get('/api/clients/' + clientId + '/personas');
+      if (personas.length === 0) {
+        $('#personas-list').innerHTML = `
+          <div class="card" style="text-align:center; padding:40px;">
+            <p class="muted">Esse cliente ainda nao tem persona.</p>
+            <a href="/persona-nova?client_id=${clientId}" class="btn" style="margin-top:14px;">Gerar primeira persona com IA</a>
+          </div>`;
+        return;
+      }
+      $('#personas-list').innerHTML = personas.map(p => `
+        <a class="persona-card" href="/persona?id=${p.id}">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+            <div>
+              <div class="name">${escapeHtml(p.name)}</div>
+              <div class="meta">${escapeHtml(p.profession || '-')} &middot; ${escapeHtml(p.age_range || '-')} &middot; ${escapeHtml(p.location || '-')}</div>
+            </div>
+            ${p.generated_by_ai ? '<span class="badge-ia">IA</span>' : ''}
+          </div>
+        </a>
+      `).join('');
+    }
+
+    $('#delete-btn').addEventListener('click', async () => {
+      if (!confirm('Arquivar esse cliente? Vai sumir da listagem mas o historico fica salvo.')) return;
+      await window.api.del('/api/clients/' + clientId);
+      location.href = '/clientes';
+    });
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      try {
+        await loadClient();
+        await loadPersonas();
+        await loadScripts();
+        await loadCarousels();
+      } catch (err) {
+        if (err.status === 404) {
+          alert('Cliente nao encontrado');
+          location.href = '/clientes';
+        } else throw err;
+      }
+    })();
+  </script>
+</body>
+</html>

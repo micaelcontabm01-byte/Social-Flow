@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carrosseis - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .car-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: transform 0.12s, box-shadow 0.12s; }
+    .car-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .car-thumb { width: 100%; aspect-ratio: 4/5; background: var(--bg-3); border-radius: var(--radius-sm); margin-bottom: 12px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-3); }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item active">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Carrosseis</h1>
+        <a href="/clientes" class="btn">+ Novo carrossel</a>
+      </div>
+      <div id="list"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    const STATUS = {
+      draft: { label: 'Rascunho', color: 'var(--text-2)', bg: 'var(--bg-3)' },
+      pending_approval: { label: 'Aguardando', color: '#b87b1a', bg: 'rgba(184,123,26,0.15)' },
+      approved: { label: 'Aprovado', color: '#2d8659', bg: 'rgba(45,134,89,0.15)' },
+      rejected: { label: 'Rejeitado', color: '#c4534e', bg: 'rgba(196,83,78,0.15)' },
+      published: { label: 'Publicado', color: 'var(--brand-strong)', bg: 'var(--brand-soft)' },
+    };
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      const { carousels } = await window.api.get('/api/carousels');
+      if (carousels.length === 0) {
+        document.getElementById('list').innerHTML = `
+          <div class="card" style="text-align:center; padding: 60px 20px;">
+            <p class="muted">Voce ainda nao criou carrosseis.</p>
+            <a href="/clientes" class="btn" style="margin-top:14px;">Ir para Clientes</a>
+            <p class="muted small" style="margin-top:10px;">Carrossel e sempre criado dentro de um cliente.</p>
+          </div>`;
+        return;
+      }
+      document.getElementById('list').innerHTML = `<div class="car-grid">${carousels.map(c => {
+        const st = STATUS[c.status] || STATUS.draft;
+        return `<a class="car-card" href="/carrossel?id=${c.id}">
+          <div class="car-thumb">Template ${escapeHtml(c.template_id)}</div>
+          <div style="font-weight:700; font-size: 14px; margin-bottom: 4px;">${escapeHtml(c.title)}</div>
+          <div class="muted small" style="margin-bottom: 8px;">${escapeHtml(c.client_name)}</div>
+          <span class="status-pill" style="background:${st.bg}; color:${st.color};">${st.label}</span>
+        </a>`;
+      }).join('')}</div>`;
+    })();
+  </script>
+</body>
+</html>

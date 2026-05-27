@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roteiro - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .meta-line { color: var(--text-2); font-size: 13px; margin-bottom: 16px; }
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 4px; }
+    .tag-topo { background: rgba(45, 134, 89, 0.15); color: #2d8659; }
+    .tag-meio { background: rgba(184, 123, 26, 0.15); color: #b87b1a; }
+    .tag-fundo { background: rgba(196, 83, 78, 0.15); color: #c4534e; }
+    .tag-format { background: var(--bg-3); color: var(--text-1); }
+    .sect { margin-bottom: 20px; }
+    .sect h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin-bottom: 8px; }
+    .sect .content { background: var(--bg-2); padding: 14px 16px; border-radius: var(--radius-sm); font-size: 15px; white-space: pre-wrap; line-height: 1.6; }
+    .sect .content[contenteditable="true"] { outline: 2px solid var(--brand); background: var(--bg-1); }
+    .pill { display: inline-block; background: var(--bg-3); padding: 3px 9px; border-radius: 10px; font-size: 12px; margin: 0 4px 4px 0; }
+    .copy-btn { background: var(--bg-3); border: 1px solid var(--border); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; cursor: pointer; color: var(--text-2); }
+    .copy-btn:hover { color: var(--text-1); background: var(--bg-2); }
+    .head-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .status-pill { padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; }
+    .status-draft { background: var(--bg-3); color: var(--text-2); }
+    .status-pending_approval { background: rgba(184, 123, 26, 0.15); color: #b87b1a; }
+    .status-approved { background: rgba(45, 134, 89, 0.15); color: #2d8659; }
+    .status-rejected { background: rgba(196, 83, 78, 0.15); color: #c4534e; }
+    .status-published { background: var(--brand-soft); color: var(--brand-strong); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item active">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <a id="back-link" href="/roteiros" class="muted small" style="display:inline-block; margin-bottom:12px;">&larr; Voltar para Roteiros</a>
+      <div class="page-head">
+        <h1 id="script-title">Carregando...</h1>
+        <div style="display:flex; gap:8px; align-items:center;" id="actions"></div>
+      </div>
+
+      <div id="alert"></div>
+
+      <div class="card" id="content-card">
+        <div class="meta-line" id="meta-line"></div>
+
+        <div class="sect">
+          <div class="head-row">
+            <h3>Hook</h3>
+            <button class="copy-btn" data-copy="hook">Copiar</button>
+          </div>
+          <div class="content" id="c-hook"></div>
+        </div>
+
+        <div class="sect">
+          <div class="head-row">
+            <h3>Corpo</h3>
+            <button class="copy-btn" data-copy="body">Copiar</button>
+          </div>
+          <div class="content" id="c-body"></div>
+        </div>
+
+        <div class="sect">
+          <div class="head-row">
+            <h3>CTA</h3>
+            <button class="copy-btn" data-copy="cta">Copiar</button>
+          </div>
+          <div class="content" id="c-cta"></div>
+        </div>
+
+        <div class="sect">
+          <div class="head-row">
+            <h3>Legenda pronta pra postar</h3>
+            <button class="copy-btn" data-copy="caption">Copiar legenda</button>
+          </div>
+          <div class="content" id="c-caption"></div>
+        </div>
+
+        <div class="sect">
+          <div class="head-row">
+            <h3>Hashtags</h3>
+            <button class="copy-btn" data-copy="hashtags">Copiar todas</button>
+          </div>
+          <div id="c-hashtags"></div>
+        </div>
+
+        <div id="rejection-box" style="display:none; background: rgba(196, 83, 78, 0.08); border: 1px solid rgba(196, 83, 78, 0.3); border-radius: var(--radius-sm); padding: 14px 16px; margin-top: 20px;">
+          <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color: #c4534e; margin-bottom: 6px;">Motivo da rejeicao</h3>
+          <div id="rejection-reason" style="font-style: italic; color: var(--text-1);"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <h3 style="font-size: 14px; margin-bottom: 12px;">Comentarios e historico</h3>
+        <div id="comments-list" style="margin-bottom: 12px;"></div>
+        <form id="comment-form" style="display:flex; gap:8px;">
+          <input id="comment-input" placeholder="Comentar nesse roteiro..." style="flex:1;" maxlength="2000" />
+          <button type="submit" class="btn">Comentar</button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="reject-modal" style="position:fixed; inset:0; background:rgba(40,30,20,0.5); display:none; align-items:center; justify-content:center; z-index:50;">
+    <div style="background: var(--bg-1); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 460px; box-shadow: var(--shadow-lg);">
+      <h2 style="font-size:18px; margin-bottom: 12px;">Pedir alteracoes</h2>
+      <p class="muted small" style="margin-bottom:14px;">Diga o que precisa mudar pra aprovar.</p>
+      <textarea id="reject-reason" rows="5" placeholder="Ex: o hook precisa ser mais forte, a CTA ficou generica..." style="margin-bottom:14px;"></textarea>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-ghost" id="reject-cancel">Cancelar</button>
+        <button class="btn" id="reject-confirm" style="background: var(--danger);">Enviar pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    if (!id) location.href = '/roteiros';
+
+    const FUNNEL_LABEL = { topo: 'TOPO', meio: 'MEIO', fundo: 'FUNDO' };
+    const STATUS_LABEL = {
+      draft: 'Rascunho',
+      pending_approval: 'Aguardando aprovacao',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+      published: 'Publicado',
+    };
+    let current = null;
+    let isEditing = false;
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        // could show toast
+      });
+    }
+
+    let myRole = null;
+
+    function render(s) {
+      $('#script-title').textContent = s.title;
+      document.title = `${s.title} - SocialFlow`;
+      $('#meta-line').innerHTML = `
+        <span class="tag tag-${s.funnel_stage}">${FUNNEL_LABEL[s.funnel_stage]}</span>
+        <span class="tag tag-format">${s.format}</span>
+        <span class="status-pill status-${s.status}" id="status-pill">${STATUS_LABEL[s.status]}</span>
+        &middot; ${escapeHtml(s.client_name)}
+        ${s.persona_name ? '&middot; ' + escapeHtml(s.persona_name) : ''}
+        &middot; Criado em ${new Date(s.created_at).toLocaleDateString('pt-BR')}
+      `;
+      $('#c-hook').textContent = s.hook || '-';
+      $('#c-body').textContent = s.body || '-';
+      $('#c-cta').textContent = s.cta || '-';
+      $('#c-caption').textContent = s.caption || '-';
+      $('#c-hashtags').innerHTML = (s.hashtags || []).map(h => `<span class="pill">${escapeHtml(h)}</span>`).join('') || '<span class="muted small">Sem hashtags</span>';
+      if (s.status === 'rejected' && s.rejection_reason) {
+        $('#rejection-box').style.display = 'block';
+        $('#rejection-reason').textContent = s.rejection_reason;
+      } else {
+        $('#rejection-box').style.display = 'none';
+      }
+      renderActions();
+    }
+
+    function renderActions() {
+      if (isEditing) {
+        $('#actions').innerHTML = `
+          <button class="btn btn-ghost" id="cancel-btn">Cancelar</button>
+          <button class="btn" id="save-btn">Salvar</button>
+        `;
+        $('#cancel-btn').addEventListener('click', () => {
+          isEditing = false;
+          render(current);
+        });
+        $('#save-btn').addEventListener('click', saveEdits);
+        ['c-hook','c-body','c-cta','c-caption'].forEach(id => {
+          const el = document.getElementById(id);
+          el.setAttribute('contenteditable', 'true');
+        });
+      } else {
+        const buttons = [];
+        const canEdit = ['owner', 'collaborator'].includes(myRole);
+        const canApprove = ['owner', 'client'].includes(myRole);
+
+        if (current.status === 'draft' && canEdit) {
+          buttons.push(`<button class="btn btn-ghost" id="edit-btn">Editar</button>`);
+          buttons.push(`<button class="btn" id="submit-btn">Enviar pra aprovacao</button>`);
+        } else if (current.status === 'pending_approval') {
+          if (canApprove) {
+            buttons.push(`<button class="btn btn-ghost" id="reject-btn" style="color:var(--danger);">Pedir alteracao</button>`);
+            buttons.push(`<button class="btn" id="approve-btn" style="background: var(--success);">Aprovar</button>`);
+          }
+          if (canEdit && myRole !== 'client') {
+            buttons.push(`<button class="btn btn-ghost" id="edit-btn">Editar</button>`);
+          }
+        } else if (current.status === 'approved' && canEdit) {
+          buttons.push(`<button class="btn" id="publish-btn">Marcar como publicado</button>`);
+        } else if (current.status === 'rejected' && canEdit) {
+          buttons.push(`<button class="btn btn-ghost" id="edit-btn">Editar</button>`);
+          buttons.push(`<button class="btn" id="submit-btn">Reenviar</button>`);
+        }
+        if (canEdit) {
+          buttons.push(`<button class="btn btn-ghost" id="delete-btn" style="color:var(--danger);">Excluir</button>`);
+        }
+        $('#actions').innerHTML = buttons.join('');
+
+        const edit = document.getElementById('edit-btn');
+        if (edit) edit.addEventListener('click', () => { isEditing = true; renderActions(); });
+        const submit = document.getElementById('submit-btn');
+        if (submit) submit.addEventListener('click', submitForApproval);
+        const approve = document.getElementById('approve-btn');
+        if (approve) approve.addEventListener('click', approveScript);
+        const reject = document.getElementById('reject-btn');
+        if (reject) reject.addEventListener('click', openRejectModal);
+        const pub = document.getElementById('publish-btn');
+        if (pub) pub.addEventListener('click', () => changeStatus('published'));
+        const del = document.getElementById('delete-btn');
+        if (del) del.addEventListener('click', deleteScript);
+
+        ['c-hook','c-body','c-cta','c-caption'].forEach(id => {
+          const el = document.getElementById(id);
+          el.removeAttribute('contenteditable');
+        });
+      }
+    }
+
+    async function submitForApproval() {
+      try {
+        await window.api.post(`/api/scripts/${id}/submit`);
+        await reload();
+      } catch (err) { alert('Erro: ' + err.message); }
+    }
+
+    async function approveScript() {
+      try {
+        await window.api.post(`/api/scripts/${id}/approve`);
+        await reload();
+      } catch (err) { alert('Erro: ' + err.message); }
+    }
+
+    function openRejectModal() {
+      $('#reject-modal').style.display = 'flex';
+      $('#reject-reason').focus();
+    }
+    $('#reject-cancel').addEventListener('click', () => $('#reject-modal').style.display = 'none');
+    $('#reject-confirm').addEventListener('click', async () => {
+      const reason = $('#reject-reason').value.trim();
+      if (reason.length < 3) { alert('Escreve um motivo (minimo 3 caracteres)'); return; }
+      try {
+        await window.api.post(`/api/scripts/${id}/reject`, { reason });
+        $('#reject-modal').style.display = 'none';
+        $('#reject-reason').value = '';
+        await reload();
+      } catch (err) { alert('Erro: ' + err.message); }
+    });
+
+    async function saveEdits() {
+      const data = {
+        hook: $('#c-hook').innerText,
+        body: $('#c-body').innerText,
+        cta: $('#c-cta').innerText,
+        caption: $('#c-caption').innerText,
+      };
+      try {
+        const r = await window.api.put('/api/scripts/' + id, data);
+        current = r.script;
+        // reattach client_name and persona_name
+        current.client_name = current.client_name || (await window.api.get('/api/clients/' + current.client_id)).client.name;
+        isEditing = false;
+        render(current);
+      } catch (err) {
+        alert('Erro ao salvar: ' + err.message);
+      }
+    }
+
+    async function changeStatus(status) {
+      try {
+        const r = await window.api.put('/api/scripts/' + id, { status });
+        current = { ...current, ...r.script };
+        render(current);
+      } catch (err) {
+        alert('Erro: ' + err.message);
+      }
+    }
+
+    async function deleteScript() {
+      if (!confirm('Excluir esse roteiro definitivamente?')) return;
+      await window.api.del('/api/scripts/' + id);
+      location.href = '/roteiros';
+    }
+
+    document.querySelectorAll('.copy-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        const what = b.dataset.copy;
+        let text = '';
+        if (what === 'hashtags') text = (current?.hashtags || []).join(' ');
+        else text = current?.[what] || '';
+        copyText(text);
+        const orig = b.textContent;
+        b.textContent = 'Copiado!';
+        setTimeout(() => { b.textContent = orig; }, 1200);
+      });
+    });
+
+    async function loadComments() {
+      try {
+        const { comments } = await window.api.get(`/api/scripts/${id}/comments`);
+        if (comments.length === 0) {
+          $('#comments-list').innerHTML = '<p class="muted small">Sem comentarios ainda.</p>';
+          return;
+        }
+        $('#comments-list').innerHTML = comments.map(c => {
+          const kindBadge = c.kind !== 'comment'
+            ? `<span class="pill" style="font-size:10px; margin-left:6px;">${c.kind}</span>` : '';
+          return `<div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <div style="font-size:12px; color: var(--text-3); margin-bottom:4px;">
+              <strong style="color: var(--text-1);">${escapeHtml(c.user_name || 'Usuario')}</strong>
+              <span style="opacity:0.7;">(${c.user_role || '-'})</span>
+              ${kindBadge}
+              &middot; ${new Date(c.created_at).toLocaleString('pt-BR')}
+            </div>
+            <div style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(c.content)}</div>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        $('#comments-list').innerHTML = '<p class="muted small">Erro ao carregar comentarios.</p>';
+      }
+    }
+
+    $('#comment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const content = $('#comment-input').value.trim();
+      if (!content) return;
+      try {
+        await window.api.post(`/api/scripts/${id}/comments`, { content });
+        $('#comment-input').value = '';
+        await loadComments();
+      } catch (err) { alert('Erro: ' + err.message); }
+    });
+
+    async function reload() {
+      const { script } = await window.api.get('/api/scripts/' + id);
+      current = script;
+      render(current);
+      await loadComments();
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      myRole = me.role;
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      try {
+        await reload();
+      } catch (err) {
+        if (err.status === 404) {
+          alert('Roteiro nao encontrado');
+          location.href = '/roteiros';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

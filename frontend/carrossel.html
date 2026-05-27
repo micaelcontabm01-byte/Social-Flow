@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carrossel - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    .editor { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+    @media (max-width: 1000px) { .editor { grid-template-columns: 1fr; } }
+    .slide-form { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-height: 75vh; overflow: auto; }
+    .slide-form h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin: 14px 0 6px; }
+    .slide-form h4:first-child { margin-top: 0; }
+    .preview { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; overflow: auto; max-height: 75vh; }
+    .slides-row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; }
+    .slide {
+      flex-shrink: 0;
+      width: 280px;
+      aspect-ratio: 4/5;
+      border-radius: 14px;
+      padding: 36px 28px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      font-family: "Inter", -apple-system, sans-serif;
+    }
+    .slide-num {
+      position: absolute;
+      top: 18px;
+      right: 22px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0.5;
+    }
+    .slide.compact { padding: 28px 22px; }
+    .slide h1, .slide h2, .slide p { margin: 0; word-wrap: break-word; }
+    .slide-cover h1 { font-size: 36px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 14px; }
+    .slide-cover h2 { font-size: 16px; font-weight: 500; opacity: 0.7; }
+    .slide-step h1 { font-size: 56px; line-height: 1; font-weight: 800; margin-bottom: 16px; }
+    .slide-step h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+    .slide-step p { font-size: 15px; line-height: 1.45; }
+    .slide-content h2 { font-size: 26px; font-weight: 700; margin-bottom: 10px; line-height: 1.2; }
+    .slide-content p { font-size: 16px; line-height: 1.5; }
+    .slide-cta h1 { font-size: 32px; line-height: 1.15; font-weight: 800; text-align: center; }
+    .preview-controls { display: flex; gap: 10px; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item active">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <a id="back-link" href="/carrosseis" class="muted small" style="display:inline-block; margin-bottom:12px;">&larr; Voltar</a>
+      <div class="page-head">
+        <h1 id="title">Carregando...</h1>
+        <div style="display:flex; gap:8px;" id="actions"></div>
+      </div>
+
+      <div class="editor">
+        <div class="slide-form" id="form-pane">Carregando...</div>
+        <div class="preview">
+          <div class="slides-row" id="slides-row"></div>
+          <div class="preview-controls">
+            <button class="btn btn-ghost" id="export-all-btn">Baixar todos os slides (PNG)</button>
+            <span class="muted small" id="quota-line"></span>
+          </div>
+          <p class="muted small" style="margin-top: 10px;">
+            Dica: para postar no Instagram, baixe os PNGs e arraste na ordem ao criar o carrossel.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    if (!id) location.href = '/carrosseis';
+
+    let carousel = null;
+    let template = null;
+    let myRole = null;
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function slideHtml(template, slideNum, slides) {
+      const slideFields = template.fields.filter(f => f.slide === slideNum);
+      const role = slideFields[0]?.role || 'content';
+      const palette = template.palette;
+      const styles = `background: ${palette.bg}; color: ${palette.fg};`;
+
+      let inner = '';
+      if (role === 'cover') {
+        const h = slideFields.find(f => f.key.includes('headline') || f.key.includes('title'));
+        const s = slideFields.find(f => f.key.includes('subhead') || f.key.includes('promise') || f.key.includes('subhead'));
+        inner = `<h1>${escapeHtml(slides[h?.key] || '')}</h1>${s ? `<h2 style="color:${palette.muted};">${escapeHtml(slides[s.key] || '')}</h2>` : ''}`;
+        return `<div class="slide slide-cover" style="${styles}"><div class="slide-num" style="color:${palette.fg};">1/${template.slide_count}</div>${inner}</div>`;
+      } else if (role === 'step') {
+        const t = slideFields.find(f => f.key.endsWith('_title'));
+        const b = slideFields.find(f => f.key.endsWith('_body'));
+        const stepNum = (t?.key.match(/_(\d+)_/) || [])[1] || '';
+        inner = `<h1 style="color:${palette.accent};">${stepNum}</h1><h2>${escapeHtml(slides[t?.key] || '')}</h2><p style="color:${palette.muted};">${escapeHtml(slides[b?.key] || '')}</p>`;
+        return `<div class="slide slide-step" style="${styles}"><div class="slide-num" style="color:${palette.fg};">${slideNum}/${template.slide_count}</div>${inner}</div>`;
+      } else if (role === 'cta') {
+        const c = slideFields[0];
+        inner = `<h1>${escapeHtml(slides[c?.key] || '')}</h1>`;
+        return `<div class="slide slide-cta" style="${styles}"><div class="slide-num" style="color:${palette.fg};">${slideNum}/${template.slide_count}</div>${inner}</div>`;
+      } else {
+        // generic content
+        const content = slideFields.map(f => escapeHtml(slides[f.key] || '')).filter(Boolean).join('<br><br>');
+        inner = `<h2>${content}</h2>`;
+        return `<div class="slide slide-content" style="${styles}"><div class="slide-num" style="color:${palette.fg};">${slideNum}/${template.slide_count}</div>${inner}</div>`;
+      }
+    }
+
+    function renderPreview() {
+      const html = [];
+      for (let i = 1; i <= template.slide_count; i++) {
+        html.push(slideHtml(template, i, carousel.slides));
+      }
+      $('#slides-row').innerHTML = html.join('');
+    }
+
+    function renderForm() {
+      let html = '';
+      const slidesGrouped = {};
+      template.fields.forEach(f => {
+        if (!slidesGrouped[f.slide]) slidesGrouped[f.slide] = [];
+        slidesGrouped[f.slide].push(f);
+      });
+      for (const slideNum of Object.keys(slidesGrouped).sort((a,b) => +a - +b)) {
+        html += `<h4>Slide ${slideNum}</h4>`;
+        for (const f of slidesGrouped[slideNum]) {
+          html += `<div class="field">
+            <label for="f-${f.key}">${escapeHtml(f.label)} <span class="muted small">(max ${f.max})</span></label>
+            <textarea id="f-${f.key}" data-key="${f.key}" maxlength="${f.max}" rows="${f.max > 100 ? 3 : 2}">${escapeHtml(carousel.slides[f.key] || '')}</textarea>
+          </div>`;
+        }
+      }
+      $('#form-pane').innerHTML = html;
+      document.querySelectorAll('#form-pane textarea').forEach(el => {
+        el.addEventListener('input', () => {
+          carousel.slides[el.dataset.key] = el.value;
+          renderPreview();
+        });
+      });
+    }
+
+    async function save() {
+      try {
+        const r = await window.api.put('/api/carousels/' + id, {
+          slides: carousel.slides,
+          title: carousel.title,
+        });
+        carousel = { ...carousel, ...r.carousel };
+      } catch (err) {
+        alert('Erro ao salvar: ' + err.message);
+      }
+    }
+
+    async function exportAll() {
+      const slides = document.querySelectorAll('#slides-row .slide');
+      for (let i = 0; i < slides.length; i++) {
+        const canvas = await html2canvas(slides[i], { scale: 2, backgroundColor: null });
+        const link = document.createElement('a');
+        link.download = `${(carousel.title || 'carrossel').replace(/\s+/g,'-')}-slide-${i+1}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    function renderActions() {
+      const buttons = [];
+      const canEdit = ['owner', 'collaborator'].includes(myRole);
+      if (canEdit) {
+        if (carousel.status === 'draft' || carousel.status === 'rejected') {
+          buttons.push(`<button class="btn btn-ghost" id="save-btn">Salvar</button>`);
+          buttons.push(`<button class="btn" id="submit-btn">Enviar pra aprovacao</button>`);
+        } else if (carousel.status === 'pending_approval') {
+          buttons.push(`<button class="btn btn-ghost" id="save-btn">Salvar</button>`);
+        } else if (carousel.status === 'approved') {
+          buttons.push(`<button class="btn" id="publish-btn">Marcar como publicado</button>`);
+        }
+        buttons.push(`<button class="btn btn-ghost" id="del-btn" style="color:var(--danger);">Excluir</button>`);
+      }
+      $('#actions').innerHTML = buttons.join('');
+      const sBtn = document.getElementById('save-btn');
+      if (sBtn) sBtn.addEventListener('click', save);
+      const subBtn = document.getElementById('submit-btn');
+      if (subBtn) subBtn.addEventListener('click', async () => {
+        await save();
+        await window.api.put('/api/carousels/' + id, { status: 'pending_approval' });
+        location.reload();
+      });
+      const pubBtn = document.getElementById('publish-btn');
+      if (pubBtn) pubBtn.addEventListener('click', async () => {
+        await window.api.put('/api/carousels/' + id, { status: 'published' });
+        location.reload();
+      });
+      const dBtn = document.getElementById('del-btn');
+      if (dBtn) dBtn.addEventListener('click', async () => {
+        if (!confirm('Excluir definitivamente?')) return;
+        await window.api.del('/api/carousels/' + id);
+        location.href = '/carrosseis';
+      });
+    }
+
+    $('#export-all-btn').addEventListener('click', exportAll);
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      myRole = me.role;
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+      try {
+        const { carousel: c } = await window.api.get('/api/carousels/' + id);
+        carousel = c;
+        $('#title').textContent = c.title;
+        document.title = `${c.title} - SocialFlow`;
+        const { template: t } = await window.api.get('/api/carousels/templates/' + c.template_id);
+        template = t;
+        renderForm();
+        renderPreview();
+        renderActions();
+      } catch (err) {
+        if (err.status === 404) {
+          alert('Carrossel nao encontrado');
+          location.href = '/carrosseis';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Novo roteiro - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .gen-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 1000px) { .gen-layout { grid-template-columns: 1fr; } }
+    .preview-sect { margin-bottom: 18px; }
+    .preview-sect h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin-bottom: 6px; }
+    .preview-sect .content { background: var(--bg-2); padding: 12px 14px; border-radius: var(--radius-sm); font-size: 14px; white-space: pre-wrap; line-height: 1.6; }
+    .pill { background: var(--bg-3); padding: 3px 9px; border-radius: 10px; font-size: 12px; margin-right: 4px; display: inline-block; }
+    .loading-dots::after { content: '.'; animation: dots 1.2s steps(3) infinite; }
+    @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+    .stage-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .stage-btn { padding: 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-1); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.12s; }
+    .stage-btn:hover { border-color: var(--brand); }
+    .stage-btn.selected { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-strong); }
+    .stage-btn small { display: block; font-size: 10px; font-weight: 400; color: var(--text-3); margin-top: 3px; }
+    .format-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .format-btn { padding: 10px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-1); cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.12s; text-align: center; }
+    .format-btn:hover { border-color: var(--brand); }
+    .format-btn.selected { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-strong); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item active">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <a id="back-link" class="muted small" style="display:inline-block; margin-bottom:12px;">&larr; Voltar</a>
+      <div class="page-head">
+        <h1>Novo roteiro com IA</h1>
+        <span class="muted small" id="quota-info"></span>
+      </div>
+
+      <div id="alert"></div>
+
+      <div class="gen-layout">
+        <div class="card">
+          <form id="gen-form">
+            <div class="field">
+              <label>Cliente</label>
+              <p style="font-weight:600;" id="client-display">Carregando...</p>
+            </div>
+
+            <div class="field">
+              <label>Persona (opcional, mas recomendado)</label>
+              <select id="persona-select"><option value="">Sem persona</option></select>
+            </div>
+
+            <div class="field">
+              <label>Etapa do funil</label>
+              <div class="stage-buttons">
+                <button type="button" class="stage-btn" data-stage="topo">TOPO<small>Atrair publico novo</small></button>
+                <button type="button" class="stage-btn" data-stage="meio">MEIO<small>Engajar quem segue</small></button>
+                <button type="button" class="stage-btn" data-stage="fundo">FUNDO<small>Converter em venda</small></button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Formato</label>
+              <div class="format-buttons">
+                <button type="button" class="format-btn" data-format="reel">Reel</button>
+                <button type="button" class="format-btn" data-format="carrossel">Carrossel</button>
+                <button type="button" class="format-btn" data-format="post">Post</button>
+                <button type="button" class="format-btn" data-format="story">Story</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="theme">Tema / assunto</label>
+              <input id="theme" placeholder="Ex: como escolher bolo para casamento" maxlength="500" />
+            </div>
+
+            <div class="field">
+              <label for="goal">Objetivo desse conteudo</label>
+              <input id="goal" placeholder="Ex: gerar 5 leads no DM" maxlength="500" />
+            </div>
+
+            <div class="field">
+              <label for="notes">Observacoes / dados extras</label>
+              <textarea id="notes" rows="3" placeholder="Qualquer informacao extra"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-block" id="gen-btn">Gerar roteiro com IA</button>
+          </form>
+        </div>
+
+        <div class="card" id="preview-card" style="min-height: 400px;">
+          <div id="empty-preview" style="color:var(--text-3); text-align:center; padding: 80px 20px;">
+            <p>O roteiro gerado vai aparecer aqui.</p>
+            <p class="small" style="margin-top:8px;">Preencha o formulario e clique em "Gerar".</p>
+          </div>
+          <div id="loading-preview" style="display:none; text-align:center; padding: 80px 20px;">
+            <p>Gerando roteiro com IA<span class="loading-dots"></span></p>
+            <p class="small muted" style="margin-top:8px;">Pode levar 10-25 segundos.</p>
+          </div>
+          <div id="result-preview" style="display:none;"></div>
+          <div id="result-actions" style="display:none; gap:10px; margin-top:20px; justify-content:flex-end;">
+            <button class="btn btn-ghost" id="regen-btn">Gerar outro</button>
+            <button class="btn" id="save-btn">Salvar como rascunho</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const params = new URLSearchParams(location.search);
+    const clientId = params.get('client_id');
+    if (!clientId) location.href = '/clientes';
+
+    let generatedData = null;
+    let rawInput = null;
+    let selectedStage = 'topo';
+    let selectedFormat = 'reel';
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renderPreview(s) {
+      $('#empty-preview').style.display = 'none';
+      $('#loading-preview').style.display = 'none';
+      $('#result-preview').style.display = 'block';
+      $('#result-actions').style.display = 'flex';
+
+      $('#result-preview').innerHTML = `
+        <div style="font-size:18px; font-weight:700; margin-bottom: 16px;">${escapeHtml(s.title)}</div>
+
+        <div class="preview-sect">
+          <h3>Hook</h3>
+          <div class="content">${escapeHtml(s.hook || '')}</div>
+        </div>
+
+        <div class="preview-sect">
+          <h3>Corpo</h3>
+          <div class="content">${escapeHtml(s.body || '')}</div>
+        </div>
+
+        <div class="preview-sect">
+          <h3>CTA</h3>
+          <div class="content">${escapeHtml(s.cta || '')}</div>
+        </div>
+
+        <div class="preview-sect">
+          <h3>Legenda pronta</h3>
+          <div class="content">${escapeHtml(s.caption || '')}</div>
+        </div>
+
+        <div class="preview-sect">
+          <h3>Hashtags</h3>
+          <div>${(s.hashtags || []).map(h => `<span class="pill">${escapeHtml(h)}</span>`).join('')}</div>
+        </div>
+      `;
+    }
+
+    document.querySelectorAll('.stage-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.stage-btn').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        selectedStage = b.dataset.stage;
+      });
+    });
+    document.querySelectorAll('.format-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.format-btn').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        selectedFormat = b.dataset.format;
+      });
+    });
+    document.querySelector('.stage-btn[data-stage="topo"]').click();
+    document.querySelector('.format-btn[data-format="reel"]').click();
+
+    $('#gen-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('#gen-btn').disabled = true;
+      $('#gen-btn').textContent = 'Gerando...';
+      $('#alert').innerHTML = '';
+      $('#empty-preview').style.display = 'none';
+      $('#result-preview').style.display = 'none';
+      $('#result-actions').style.display = 'none';
+      $('#loading-preview').style.display = 'block';
+
+      try {
+        const body = {
+          client_id: clientId,
+          persona_id: $('#persona-select').value || null,
+          funnel_stage: selectedStage,
+          format: selectedFormat,
+          theme: $('#theme').value,
+          goal: $('#goal').value,
+          notes: $('#notes').value,
+        };
+        const resp = await window.api.post('/api/scripts/generate', body);
+        generatedData = resp.script;
+        rawInput = resp.raw_input;
+        renderPreview(generatedData);
+        if (resp.quota) $('#quota-info').textContent = `IA: ${resp.quota.used}/${resp.quota.limit}`;
+      } catch (err) {
+        $('#loading-preview').style.display = 'none';
+        $('#empty-preview').style.display = 'block';
+        if (err.status === 429) {
+          $('#alert').innerHTML = `<div class="alert alert-error">Limite de IA do plano atingido. <a href="/billing">Faca upgrade</a>.</div>`;
+        } else if (err.status === 502) {
+          $('#alert').innerHTML = `<div class="alert alert-error">A IA retornou resposta invalida. Tente novamente.</div>`;
+        } else {
+          $('#alert').innerHTML = `<div class="alert alert-error">${escapeHtml(err.message || 'Erro')}</div>`;
+        }
+      } finally {
+        $('#gen-btn').disabled = false;
+        $('#gen-btn').textContent = 'Gerar roteiro com IA';
+      }
+    });
+
+    $('#regen-btn').addEventListener('click', () => {
+      generatedData = null;
+      $('#result-preview').style.display = 'none';
+      $('#result-actions').style.display = 'none';
+      $('#empty-preview').style.display = 'block';
+    });
+
+    $('#save-btn').addEventListener('click', async () => {
+      if (!generatedData) return;
+      $('#save-btn').disabled = true;
+      try {
+        const resp = await window.api.post('/api/scripts', {
+          client_id: clientId,
+          persona_id: $('#persona-select').value || null,
+          funnel_stage: selectedStage,
+          format: selectedFormat,
+          theme: $('#theme').value || null,
+          goal: $('#goal').value || null,
+          ...generatedData,
+          raw_input: rawInput,
+          generated_by_ai: true,
+          status: 'draft',
+        });
+        location.href = `/roteiro?id=${resp.script.id}`;
+      } catch (err) {
+        alert('Erro ao salvar: ' + err.message);
+        $('#save-btn').disabled = false;
+      }
+    });
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      $('#quota-info').textContent = `IA: ${me.ia_quota_used}/${me.ia_quota_limit}`;
+      const { client } = await window.api.get('/api/clients/' + clientId);
+      $('#client-display').textContent = client.name + (client.niche ? ' (' + client.niche + ')' : '');
+      $('#back-link').href = `/cliente?id=${clientId}`;
+
+      const { personas } = await window.api.get('/api/clients/' + clientId + '/personas');
+      const sel = $('#persona-select');
+      personas.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        sel.appendChild(opt);
+      });
+      if (personas.length > 0) sel.value = personas[0].id;
+
+      $('#logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+    })();
+  </script>
+</body>
+</html>

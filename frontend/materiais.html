@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Materiais - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .mat-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .mat-card .info { flex: 1; min-width: 0; }
+    .mat-name { font-weight: 700; font-size: 15px; }
+    .mat-niche { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item active">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Materiais</h1>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <p class="muted small">
+          Cada cliente pode ter uma pasta no Google Drive vinculada (foto, video bruto, audios).
+          Edite o cliente para adicionar ou trocar a URL da pasta.
+        </p>
+      </div>
+
+      <div id="list"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+
+      const { clients } = await window.api.get('/api/clients');
+      if (clients.length === 0) {
+        document.getElementById('list').innerHTML = `<div class="card" style="text-align:center; padding:40px;">
+          <p class="muted">Sem clientes ainda.</p>
+        </div>`;
+        return;
+      }
+      document.getElementById('list').innerHTML = clients.map(c => `
+        <div class="mat-card">
+          <div class="info">
+            <div class="mat-name">${escapeHtml(c.name)}</div>
+            <div class="mat-niche">${escapeHtml(c.niche || 'Sem nicho')}</div>
+          </div>
+          ${c.drive_folder_url
+            ? `<a href="${escapeHtml(c.drive_folder_url)}" target="_blank" class="btn">Abrir Drive</a>`
+            : `<a href="/cliente?id=${c.id}" class="btn btn-ghost">Adicionar pasta</a>`}
+        </div>
+      `).join('');
+    })();
+  </script>
+</body>
+</html>

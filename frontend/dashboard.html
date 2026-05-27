@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card .label { color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card .value { font-size: 28px; font-weight: 800; margin: 4px 0; }
+    .stat-card .sub { color: var(--text-2); font-size: 12px; }
+    .recent-row { background: var(--bg-1); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 10px; align-items: center; transition: background 0.12s; }
+    .recent-row:hover { background: var(--bg-2); }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+    .status-draft { background: var(--bg-3); color: var(--text-2); }
+    .status-pending_approval { background: rgba(184,123,26,0.15); color: #b87b1a; }
+    .status-approved { background: rgba(45,134,89,0.15); color: #2d8659; }
+    .status-rejected { background: rgba(196,83,78,0.15); color: #c4534e; }
+    .status-published { background: var(--brand-soft); color: var(--brand-strong); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <a href="/dashboard" class="nav-item active">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Dashboard</h1>
+        <span class="muted small" id="user-info">Carregando...</span>
+      </div>
+
+      <div class="stats-grid" id="stats"></div>
+
+      <h3 style="font-size: 14px; margin-bottom: 12px;">Atividade recente</h3>
+      <div id="recent"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const STATUS_LABEL = {
+      draft: 'Rascunho', pending_approval: 'Aguardando', approved: 'Aprovado',
+      rejected: 'Rejeitado', published: 'Publicado',
+    };
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+
+      const isClient = me.role === 'client';
+      document.getElementById('user-info').innerHTML =
+        `${escapeHtml(me.name)} <span class="muted">&middot; ${escapeHtml(me.organization_name)} (${me.role})</span>`;
+
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+
+      try {
+        const { stats, recent } = await window.api.get('/api/dashboard/stats');
+        document.getElementById('stats').innerHTML = `
+          ${isClient ? '' : `<div class="card stat-card"><div class="label">Clientes ativos</div><div class="value">${stats.clients}</div></div>`}
+          <div class="card stat-card"><div class="label">Aguardando aprovacao</div><div class="value">${stats.pending}</div></div>
+          <div class="card stat-card"><div class="label">Aprovados este mes</div><div class="value">${stats.approved_month}</div></div>
+          ${isClient ? '' : `<div class="card stat-card"><div class="label">Rascunhos</div><div class="value">${stats.drafts}</div></div>`}
+          <div class="card stat-card"><div class="label">Personas</div><div class="value">${stats.personas}</div></div>
+          <div class="card stat-card"><div class="label">Uso de IA</div><div class="value">${me.ia_quota_used}<span style="font-size:14px; color:var(--text-3); font-weight:500;"> / ${me.ia_quota_limit}</span></div></div>
+        `;
+
+        const recentDiv = document.getElementById('recent');
+        if (recent.length === 0) {
+          recentDiv.innerHTML = `<div class="card" style="text-align:center; padding:40px;">
+            <p class="muted">Nenhuma atividade recente.</p>
+            ${isClient ? '' : '<a href="/clientes" class="btn" style="margin-top:14px;">Adicionar cliente</a>'}
+          </div>`;
+        } else {
+          recentDiv.innerHTML = recent.map(r => `
+            <a href="/roteiro?id=${r.id}" class="recent-row">
+              <div>
+                <div style="font-weight:600;">${escapeHtml(r.title)}</div>
+                <div class="muted small">${escapeHtml(r.client_name)} &middot; ${new Date(r.created_at).toLocaleDateString('pt-BR')}</div>
+              </div>
+              <span class="status-pill status-${r.status}">${STATUS_LABEL[r.status]}</span>
+            </a>
+          `).join('');
+        }
+      } catch (err) {
+        document.getElementById('stats').innerHTML = `<div class="alert alert-error">Erro ao carregar: ${escapeHtml(err.message)}</div>`;
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aceitar convite - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+
+      <div id="loading">
+        <p class="muted">Verificando convite...</p>
+      </div>
+
+      <div id="error" style="display:none;">
+        <h1 style="font-size: 18px; margin-bottom: 8px;">Convite invalido</h1>
+        <p class="subtitle" id="error-msg"></p>
+        <a href="/" class="btn btn-block">Ir para o site</a>
+      </div>
+
+      <div id="form-wrap" style="display:none;">
+        <h1>Aceitar convite</h1>
+        <p class="subtitle" id="invite-info">Voce foi convidado para...</p>
+        <form id="form">
+          <div id="alert"></div>
+          <div class="field">
+            <label>Email</label>
+            <input id="email" disabled />
+          </div>
+          <div class="field">
+            <label for="name">Seu nome</label>
+            <input id="name" required minlength="2" />
+          </div>
+          <div class="field">
+            <label for="password">Crie uma senha (minimo 8 caracteres)</label>
+            <input id="password" type="password" required minlength="8" autocomplete="new-password" />
+          </div>
+          <button type="submit" class="btn btn-block" id="submit-btn">Entrar no SocialFlow</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    if (!token) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error-msg').textContent = 'Token nao informado.';
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    (async () => {
+      if (!token) return;
+      try {
+        const { invitation } = await window.api.get('/api/invitations/by-token/' + token);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('form-wrap').style.display = 'block';
+        document.getElementById('email').value = invitation.email;
+        const roleLabel = invitation.role === 'client' ? 'cliente' : 'colaborador';
+        const context = invitation.client_name
+          ? ` como ${roleLabel} de <strong>${escapeHtml(invitation.client_name)}</strong>`
+          : ` como ${roleLabel}`;
+        document.getElementById('invite-info').innerHTML =
+          `Voce foi convidado para <strong>${escapeHtml(invitation.organization_name)}</strong>${context}.`;
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error-msg').textContent = err.message;
+      }
+    })();
+
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('submit-btn').disabled = true;
+      document.getElementById('alert').innerHTML = '';
+      try {
+        await window.api.post('/api/invitations/accept/' + token, {
+          name: document.getElementById('name').value.trim(),
+          password: document.getElementById('password').value,
+        });
+        location.href = '/dashboard';
+      } catch (err) {
+        document.getElementById('alert').innerHTML =
+          `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+        document.getElementById('submit-btn').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
