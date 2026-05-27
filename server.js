@@ -71,6 +71,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`SocialFlow rodando em http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`SocialFlow rodando em http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

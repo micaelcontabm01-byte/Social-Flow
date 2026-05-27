@@ -150,18 +150,22 @@ router.post('/', requireOrgRole('owner'), async (req, res, next) => {
     const orgName = orgRes.rows[0]?.name;
     const link = `${APP_URL}/aceitar-convite?token=${token}`;
 
-    sendEmail({
-      to: emailNorm,
-      subject: `Voce foi convidado para o SocialFlow (${orgName})`,
-      html: layout(`
-        <h2 style="font-size:18px; margin: 0 0 12px;">Voce foi convidado</h2>
-        <p style="margin: 0 0 8px; color: #6b5848;">${orgName} te convidou para participar do SocialFlow como <strong>${data.role === 'client' ? 'cliente' : 'colaborador'}</strong>.</p>
-        <p style="margin: 0 0 20px; color: #6b5848;">Clique no botao abaixo para criar sua senha e entrar.</p>
-        ${button(link, 'Aceitar convite')}
-        <p class="muted small" style="margin-top:14px; color:#9a8970; font-size:12px;">Esse convite expira em 7 dias.</p>
-      `),
-      text: `Voce foi convidado para ${orgName} no SocialFlow.\nAceite em: ${link}`,
-    }).catch(e => console.error('[invite-email] falhou:', e.message));
+    try {
+      await sendEmail({
+        to: emailNorm,
+        subject: `Voce foi convidado para o SocialFlow (${orgName})`,
+        html: layout(`
+          <h2 style="font-size:18px; margin: 0 0 12px;">Voce foi convidado</h2>
+          <p style="margin: 0 0 8px; color: #6b5848;">${orgName} te convidou para participar do SocialFlow como <strong>${data.role === 'client' ? 'cliente' : 'colaborador'}</strong>.</p>
+          <p style="margin: 0 0 20px; color: #6b5848;">Clique no botao abaixo para criar sua senha e entrar.</p>
+          ${button(link, 'Aceitar convite')}
+          <p class="muted small" style="margin-top:14px; color:#9a8970; font-size:12px;">Esse convite expira em 7 dias.</p>
+        `),
+        text: `Voce foi convidado para ${orgName} no SocialFlow.\nAceite em: ${link}`,
+      });
+    } catch (e) {
+      console.error('[invite-email] falhou:', e.message);
+    }
 
     res.status(201).json({ invitation: inv, accept_link: link });
   } catch (err) {
