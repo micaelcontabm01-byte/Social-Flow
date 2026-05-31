@@ -18,7 +18,16 @@ router.get('/', async (req, res, next) => {
       [req.session.userId, req.session.currentOrgId]
     );
     if (result.rowCount === 0) return res.status(404).json({ error: 'Usuario nao encontrado' });
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    res.json({
+      ...row,
+      black_extras: row.plan_code === 'black'
+        ? {
+            whatsapp_group_url: process.env.BLACK_WHATSAPP_GROUP_URL || null,
+          }
+        : null,
+      white_label_enabled: ['pro', 'black'].includes(row.plan_code),
+    });
   } catch (err) {
     next(err);
   }

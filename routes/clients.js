@@ -3,6 +3,8 @@ const { z } = require('zod');
 const { query } = require('../lib/db');
 const { requireAuth } = require('../middleware/auth');
 const { requireOrgAccess, requireOrgRole, checkClientLimit } = require('../middleware/tenant');
+const drive = require('../lib/drive');
+const { getFreshGoogleToken } = require('../lib/integrations');
 
 const router = express.Router();
 router.use(requireAuth, requireOrgAccess);
@@ -12,6 +14,7 @@ const clientSchema = z.object({
   niche: z.string().max(200).optional().nullable(),
   instagram_handle: z.string().max(50).optional().nullable(),
   drive_folder_url: z.string().url().max(500).optional().nullable().or(z.literal('')),
+  drive_folder_id: z.string().max(200).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
 
@@ -101,6 +104,41 @@ router.put('/:id', requireOrgRole('owner', 'collaborator'), async (req, res, nex
     res.json({ client: r.rows[0] });
   } catch (err) {
     if (err.name === 'ZodError') return res.status(400).json({ error: err.errors });
+    next(err);
+  }
+});
+
+// Cria (ou reaproveita) uma subpasta no Drive com o nome do cliente, dentro da
+// pasta "SocialFlow". Salva folder_id + url no cliente. Requer Google conectado.
+router.post('/:id/drive/folder', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
+  try {
+    const cr = await query(
+      `SELECT id, name FROM clients WHERE id = $1 AND organization_id = $2`,
+      [req.params.id, req.orgId]
+    );
+    if (cr.rowCount === 0) return res.status(404).json({ error: 'Cliente nao encontrado' });
+    const client = cr.rows[0];
+
+    const integ = await getFreshGoogleToken(req.orgId);
+    if (!integ) return res.status(409).json({ error: 'Conecte sua conta do Google Drive em Configuracoes primeiro.' });
+
+    // Garante a pasta-mae SocialFlow (usa a salva na config ou cria).
+    let parentId = integ.config?.folder_id;
+    if (!parentId) {
+      const parent = await drive.ensureFolder(integ.access_token, 'SocialFlow');
+      parentId = parent.id;
+    }
+    const sub = await drive.ensureFolder(integ.access_token, client.name, parentId);
+
+    const url = sub.webViewLink || `https://drive.google.com/drive/folders/${sub.id}`;
+    await query(
+      `UPDATE clients SET drive_folder_id = $1, drive_folder_url = $2, updated_at = now()
+         WHERE id = $3 AND organization_id = $4`,
+      [sub.id, url, client.id, req.orgId]
+    );
+    res.json({ ok: true, folder_id: sub.id, folder_url: url });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
 });

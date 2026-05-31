@@ -6,21 +6,31 @@
   <title>Calendario - SocialFlow</title>
   <link rel="stylesheet" href="/assets/css/styles.css" />
   <style>
-    .day-block { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
-    .day-block h3 { font-size: 13px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
-    .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-    .item-row:last-child { border-bottom: none; }
-    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
-    .status-draft { background: var(--bg-3); color: var(--text-2); }
-    .status-pending_approval { background: rgba(184,123,26,0.15); color: #b87b1a; }
-    .status-approved { background: rgba(45,134,89,0.15); color: #2d8659; }
-    .status-published { background: var(--brand-soft); color: var(--brand-strong); }
+    .cal-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; background: var(--bg-2); border-radius: var(--radius-sm); margin-bottom: 8px; }
+    .cal-date { font-weight: 700; color: var(--brand-strong); font-size: 13px; min-width: 90px; }
+    .cal-title { flex: 1; font-weight: 600; }
+    .cal-status { font-size: 11px; padding: 3px 9px; border-radius: 10px; background: var(--bg-3); color: var(--text-2); }
+
+    .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .cal-nav { display: flex; align-items: center; gap: 8px; }
+    .cal-month { font-weight: 700; font-size: 16px; min-width: 160px; text-align: center; text-transform: capitalize; }
+    .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .grid .dow { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; text-align: center; padding: 4px 0; }
+    .cell { min-height: 92px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 6px; overflow: hidden; }
+    .cell.empty { background: transparent; border: none; }
+    .cell.today { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+    .cell .num { font-size: 12px; font-weight: 700; color: var(--text-3); margin-bottom: 4px; }
+    .ev { display: block; font-size: 11px; line-height: 1.25; padding: 3px 6px; border-radius: 6px; margin-bottom: 4px; background: var(--brand-soft); color: var(--brand-strong); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .ev .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; background: var(--brand); }
+    .nodate { margin-top: 16px; }
+    .nodate h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin-bottom: 8px; }
+    @media (max-width: 720px) { .cell { min-height: 64px; } .ev { font-size: 10px; } }
   </style>
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
       <a href="/dashboard" class="nav-item">Dashboard</a>
       <a href="/clientes" class="nav-item">Clientes</a>
       <a href="/personas" class="nav-item">Personas</a>
@@ -37,68 +47,180 @@
     <main class="main">
       <div class="page-head">
         <h1>Calendario de conteudo</h1>
+        <div id="head-actions"></div>
       </div>
 
-      <div class="card" style="margin-bottom: 16px;">
-        <p class="muted small">
-          Esta visao mostra roteiros agendados (campo "Agendar para") e os ultimos criados. Use o botao no roteiro para agendar.
-        </p>
-      </div>
-
-      <div id="list"></div>
+      <div id="info" class="card" style="margin-bottom: 16px;"></div>
+      <div id="content"></div>
     </main>
   </div>
 
   <script src="/assets/js/api.js"></script>
   <script>
-    const STATUS_LABEL = { draft: 'Rascunho', pending_approval: 'Aguardando', approved: 'Aprovado', rejected: 'Rejeitado', published: 'Publicado' };
+    const $ = (s) => document.querySelector(s);
+    const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
     function escapeHtml(s) {
       return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function groupByDate(scripts) {
-      const groups = {};
-      for (const s of scripts) {
-        const key = s.scheduled_for
-          ? new Date(s.scheduled_for).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
-          : `Criado em ${new Date(s.created_at).toLocaleDateString('pt-BR')}`;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(s);
+    // Cor estavel por nome de status (hash simples -> hue).
+    function statusColor(status) {
+      if (!status) return 'var(--brand)';
+      let h = 0;
+      for (let i = 0; i < status.length; i++) h = (h * 31 + status.charCodeAt(i)) % 360;
+      return `hsl(${h}, 55%, 50%)`;
+    }
+
+    // Estado do mes exibido.
+    let viewYear, viewMonth; // month 0-11
+    let eventsByDay = {};     // 'YYYY-MM-DD' -> [{title, status, url}]
+    let noDateItems = [];
+
+    function ymd(y, m, d) {
+      return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function renderCalendar() {
+      const monthName = new Date(viewYear, viewMonth, 1)
+        .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      const first = new Date(viewYear, viewMonth, 1);
+      const startDow = first.getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const today = new Date();
+      const todayStr = ymd(today.getFullYear(), today.getMonth(), today.getDate());
+
+      let cells = '';
+      // dows
+      cells += DOW.map(d => `<div class="dow">${d}</div>`).join('');
+      // leading blanks
+      for (let i = 0; i < startDow; i++) cells += '<div class="cell empty"></div>';
+      // days
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = ymd(viewYear, viewMonth, d);
+        const evs = eventsByDay[key] || [];
+        const isToday = key === todayStr;
+        const evHtml = evs.map(e => {
+          const dot = `<span class="dot" style="background:${statusColor(e.status)}"></span>`;
+          const t = e.title + (e.status ? ` (${e.status})` : '');
+          return e.url
+            ? `<a class="ev" href="${escapeHtml(e.url)}" target="_blank" title="${escapeHtml(t)}">${dot}${escapeHtml(e.title)}</a>`
+            : `<span class="ev" title="${escapeHtml(t)}">${dot}${escapeHtml(e.title)}</span>`;
+        }).join('');
+        cells += `<div class="cell${isToday ? ' today' : ''}"><div class="num">${d}</div>${evHtml}</div>`;
       }
-      return groups;
+
+      let html = `
+        <div class="card">
+          <div class="cal-head">
+            <div class="cal-month">${escapeHtml(monthName)}</div>
+            <div class="cal-nav">
+              <button class="btn btn-ghost" id="prev-m">&larr;</button>
+              <button class="btn btn-ghost" id="today-m">Hoje</button>
+              <button class="btn btn-ghost" id="next-m">&rarr;</button>
+            </div>
+          </div>
+          <div class="grid">${cells}</div>
+        </div>`;
+
+      if (noDateItems.length) {
+        html += `<div class="card nodate" style="margin-top:16px;">
+          <h3>Sem data definida</h3>
+          ${noDateItems.map(e => `
+            <div class="cal-item">
+              <div class="cal-title">${e.url ? `<a href="${escapeHtml(e.url)}" target="_blank">${escapeHtml(e.title)}</a>` : escapeHtml(e.title)}</div>
+              ${e.status ? `<span class="cal-status">${escapeHtml(e.status)}</span>` : ''}
+            </div>`).join('')}
+        </div>`;
+      }
+
+      $('#content').innerHTML = html;
+      $('#prev-m').addEventListener('click', () => { shiftMonth(-1); });
+      $('#next-m').addEventListener('click', () => { shiftMonth(1); });
+      $('#today-m').addEventListener('click', () => {
+        const n = new Date(); viewYear = n.getFullYear(); viewMonth = n.getMonth(); renderCalendar();
+      });
+    }
+
+    function shiftMonth(delta) {
+      viewMonth += delta;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      else if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      renderCalendar();
+    }
+
+    function indexEvents(items) {
+      eventsByDay = {};
+      noDateItems = [];
+      for (const it of items) {
+        if (it.date) {
+          const key = it.date.slice(0, 10); // YYYY-MM-DD (ignora hora/tz do Notion)
+          (eventsByDay[key] = eventsByDay[key] || []).push(it);
+        } else {
+          noDateItems.push(it);
+        }
+      }
+    }
+
+    // Fallback: roteiros agendados no proprio SocialFlow.
+    // showNotionHint = false pra clientes (eles nao acessam Configuracoes nem o Notion da agencia).
+    async function loadScheduledFallback(reason, showNotionHint) {
+      const hint = showNotionHint
+        ? ' Conecte seu Notion em <a href="/configuracoes">Configuracoes</a> pra ver o calendario editorial aqui.'
+        : '';
+      $('#info').innerHTML = `<p class="muted small">
+        ${escapeHtml(reason)}${hint}
+        Mostrando roteiros agendados (campo "Agendar para").
+      </p>`;
+      const { scripts } = await window.api.get('/api/scripts');
+      const items = scripts
+        .filter(s => s.scheduled_for)
+        .map(s => ({ title: s.title, date: s.scheduled_for, status: s.status, url: `/roteiro?id=${s.id}` }));
+      if (items.length === 0) {
+        $('#content').innerHTML = `<div class="card" style="text-align:center; padding:40px;">
+          <p class="muted">Sem conteudo agendado ainda.</p>
+        </div>`;
+        return;
+      }
+      indexEvents(items);
+      renderCalendar();
+    }
+
+    async function loadNotionCalendar() {
+      const data = await window.api.get('/api/integrations/notion/calendar');
+      $('#info').innerHTML = `<p class="muted small">
+        Mostrando o calendario do Notion: <strong>${escapeHtml(data.database_title)}</strong>.
+        Cada item usa a primeira propriedade de data do database.
+      </p>`;
+      indexEvents(data.items || []);
+      renderCalendar();
     }
 
     (async () => {
       const me = await window.requireSession();
       if (!me) return;
-      document.getElementById('logout-btn').addEventListener('click', async () => {
+      $('#logout-btn').addEventListener('click', async () => {
         await window.api.post('/api/auth/logout');
         window.location.href = '/';
       });
 
-      const { scripts } = await window.api.get('/api/scripts');
-      if (scripts.length === 0) {
-        document.getElementById('list').innerHTML = `<div class="card" style="text-align:center; padding:40px;">
-          <p class="muted">Sem conteudo no calendario ainda.</p>
-        </div>`;
-        return;
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+
+      const isClient = me.role === 'client';
+      try {
+        if (isClient) throw { status: 403 }; // clientes nao veem o Notion da agencia
+        await loadNotionCalendar();
+      } catch (err) {
+        if (err.status === 403) {
+          await loadScheduledFallback('Calendario de conteudo agendado.', false);
+        } else if (err.status === 409 || err.status === 404) {
+          await loadScheduledFallback('Notion ainda nao esta conectado (ou sem database selecionado).', true);
+        } else {
+          await loadScheduledFallback('Nao foi possivel carregar o Notion agora.', true);
+        }
       }
-      const groups = groupByDate(scripts);
-      document.getElementById('list').innerHTML = Object.entries(groups).map(([date, items]) => `
-        <div class="day-block">
-          <h3>${escapeHtml(date)}</h3>
-          ${items.map(s => `
-            <a href="/roteiro?id=${s.id}" class="item-row" style="text-decoration:none; color:var(--text-1);">
-              <div>
-                <strong>${escapeHtml(s.title)}</strong>
-                <span class="muted small">&middot; ${escapeHtml(s.client_name)} &middot; ${s.format}</span>
-              </div>
-              <span class="status-pill status-${s.status}">${STATUS_LABEL[s.status]}</span>
-            </a>
-          `).join('')}
-        </div>
-      `).join('');
     })();
   </script>
 </body>

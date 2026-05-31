@@ -26,7 +26,7 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
       <a href="/dashboard" class="nav-item">Dashboard</a>
       <a href="/clientes" class="nav-item active">Clientes</a>
       <a href="/personas" class="nav-item">Personas</a>
@@ -91,8 +91,9 @@
       <div class="tab-content" id="tab-materiais">
         <div class="card">
           <h3 style="margin-bottom:8px;">Pasta do Drive</h3>
-          <p class="muted small" style="margin-bottom:12px;">Link da pasta do Google Drive deste cliente.</p>
+          <p class="muted small" style="margin-bottom:12px;">Pasta do Google Drive deste cliente (subpasta dentro de "SocialFlow").</p>
           <div id="drive-area"></div>
+          <span class="small muted" id="drive-feedback" style="margin-left:8px;"></span>
         </div>
       </div>
     </main>
@@ -132,9 +133,7 @@
         ${client.notes ? `<div class="info-item" style="grid-column: 1/-1;"><label>Observacoes</label><p>${escapeHtml(client.notes)}</p></div>` : ''}
       `;
 
-      $('#drive-area').innerHTML = client.drive_folder_url
-        ? `<a href="${escapeHtml(client.drive_folder_url)}" target="_blank" class="btn">Abrir pasta no Drive</a>`
-        : `<p class="muted small">Nenhuma pasta vinculada. Edite o cliente para adicionar.</p>`;
+      renderDriveArea(client);
 
       $('#new-persona-btn').href = `/persona-nova?client_id=${client.id}`;
       $('#new-script-btn').href = `/roteiro-novo?client_id=${client.id}`;
@@ -223,6 +222,39 @@
       `).join('');
     }
 
+    function renderDriveArea(client) {
+      const area = $('#drive-area');
+      const canEdit = window.__role !== 'client';
+      if (client.drive_folder_url) {
+        area.innerHTML = `<a href="${escapeHtml(client.drive_folder_url)}" target="_blank" class="btn">Abrir pasta no Drive</a>`
+          + (canEdit ? ` <button class="btn btn-ghost" id="drive-recreate">Recriar/verificar pasta</button>` : '');
+      } else {
+        area.innerHTML = canEdit
+          ? `<button class="btn" id="drive-create">Criar pasta no Drive</button>
+             <p class="muted small" style="margin-top:8px;">Cria automaticamente uma subpasta com o nome do cliente. Precisa do Google conectado em <a href="/configuracoes">Configuracoes</a>.</p>`
+          : `<p class="muted small">Nenhuma pasta vinculada.</p>`;
+      }
+      const btn = document.getElementById('drive-create') || document.getElementById('drive-recreate');
+      if (btn) btn.addEventListener('click', () => createDriveFolder(btn));
+    }
+
+    async function createDriveFolder(btn) {
+      const orig = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Criando...';
+      $('#drive-feedback').textContent = '';
+      try {
+        const r = await window.api.post('/api/clients/' + clientId + '/drive/folder');
+        $('#drive-feedback').textContent = 'Pasta pronta!';
+        const { client } = await window.api.get('/api/clients/' + clientId);
+        renderDriveArea(client);
+        if (r.folder_url && confirm('Pasta criada! Abrir agora?')) window.open(r.folder_url, '_blank');
+      } catch (err) {
+        $('#drive-feedback').textContent = '';
+        alert(err.status === 409 ? err.message : 'Erro ao criar pasta: ' + err.message);
+        btn.disabled = false; btn.textContent = orig;
+      }
+    }
+
     $('#delete-btn').addEventListener('click', async () => {
       if (!confirm('Arquivar esse cliente? Vai sumir da listagem mas o historico fica salvo.')) return;
       await window.api.del('/api/clients/' + clientId);
@@ -232,6 +264,7 @@
     (async () => {
       const me = await window.requireSession();
       if (!me) return;
+      window.__role = me.role;
       $('#logout-btn').addEventListener('click', async () => {
         await window.api.post('/api/auth/logout');
         window.location.href = '/';

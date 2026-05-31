@@ -79,7 +79,7 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand-mark"><span class="dot"></span>SocialFlow</div>
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
       <a href="/dashboard" class="nav-item">Dashboard</a>
       <a href="/clientes" class="nav-item">Clientes</a>
       <a href="/persona" class="nav-item">Persona</a>
@@ -126,11 +126,6 @@
   <script src="/assets/js/api.js"></script>
   <script>
     function planButton(plan, currentCode) {
-      if (plan.code === 'free') {
-        return plan.code === currentCode
-          ? '<button class="btn btn-ghost btn-block" disabled>Plano atual</button>'
-          : '<span class="muted small">Plano gratuito</span>';
-      }
       if (plan.code === currentCode) {
         return '<button class="btn btn-ghost btn-block" disabled>Plano atual</button>';
       }
@@ -148,9 +143,13 @@
       ]);
 
       const org = billing.organization;
-      document.getElementById('current-plan').textContent = org.plan_name || org.plan_code;
-      document.getElementById('current-price').textContent =
-        plansResp.plans.find(p => p.code === org.plan_code)?.price_formatted || 'Gratis';
+      const hasActivePlan = org.plan_code && org.plan_code !== 'none';
+      document.getElementById('current-plan').textContent = hasActivePlan
+        ? (org.plan_name || org.plan_code)
+        : 'Nenhum plano ativo';
+      document.getElementById('current-price').textContent = hasActivePlan
+        ? (plansResp.plans.find(p => p.code === org.plan_code)?.price_formatted || '-')
+        : 'Escolha um plano abaixo para liberar o acesso';
 
       const usedPct = org.ia_quota_limit > 0
         ? Math.round((org.ia_quota_used / org.ia_quota_limit) * 100)

@@ -16,6 +16,9 @@ const notificationsRoutes = require('./routes/notifications');
 const carouselsRoutes = require('./routes/carousels');
 const invitationsRoutes = require('./routes/invitations');
 const dashboardRoutes = require('./routes/dashboard');
+const brandingRoutes = require('./routes/branding');
+const reportsRoutes = require('./routes/reports');
+const integrationsRoutes = require('./routes/integrations');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +60,13 @@ app.use('/api/notifications', requireAuth, notificationsRoutes);
 app.use('/api/carousels', carouselsRoutes);
 app.use('/api/invitations', invitationsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/branding', brandingRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/integrations', integrationsRoutes);
+
+// Vercel cron: hit GET com Authorization: Bearer $CRON_SECRET
+app.get('/api/cron/monthly-reports', reportsRoutes.runMonthlyCron);
+app.post('/api/cron/monthly-reports', reportsRoutes.runMonthlyCron);
 
 app.use(express.static(path.join(__dirname, 'frontend'), {
   extensions: ['html'],

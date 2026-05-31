@@ -23,11 +23,11 @@ create table if not exists organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   owner_user_id uuid not null references users(id) on delete restrict,
-  plan_code text not null default 'free',
-  ia_quota_limit int not null default 10,
+  plan_code text not null default 'none',
+  ia_quota_limit int not null default 0,
   ia_quota_used int not null default 0,
   ia_quota_reset_at timestamptz not null default (now() + interval '30 days'),
-  max_clients int not null default 1,
+  max_clients int not null default 0,
   max_collaborators int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -62,6 +62,7 @@ create table if not exists clients (
   niche text,
   instagram_handle text,
   drive_folder_url text,
+  drive_folder_id text,
   notes text,
   archived boolean not null default false,
   created_at timestamptz not null default now(),
@@ -75,9 +76,30 @@ alter table organization_members
   foreign key (client_id) references clients(id) on delete set null;
 
 -- ============================================================
+-- ORG_INTEGRATIONS - conexoes externas por workspace (Notion / Google Drive)
+-- Tokens guardados encriptados pela aplicacao (lib/crypto.js)
+-- ============================================================
+create table if not exists org_integrations (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  provider text not null check (provider in ('notion', 'google_drive')),
+  access_token_enc text not null,
+  refresh_token_enc text,
+  expires_at timestamptz,
+  scope text,
+  account_label text,
+  config jsonb not null default '{}',
+  connected_by_user_id uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (organization_id, provider)
+);
+
+-- ============================================================
 -- Indices
 -- ============================================================
 create index if not exists idx_clients_org on clients(organization_id) where archived = false;
+create index if not exists idx_org_integrations_org on org_integrations(organization_id);
 create index if not exists idx_members_user on organization_members(user_id);
 create index if not exists idx_members_org on organization_members(organization_id);
 create index if not exists idx_members_client on organization_members(client_id) where client_id is not null;

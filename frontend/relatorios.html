@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatorios - SocialFlow</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .report-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; background: var(--bg-2); border-radius: var(--radius-sm);
+      margin-bottom: 8px; gap: 12px;
+    }
+    .report-row .info { flex: 1; min-width: 0; }
+    .report-row .name { font-weight: 600; font-size: 14px; }
+    .report-row .meta { color: var(--text-2); font-size: 12px; }
+    .period-pill {
+      background: var(--brand-soft); color: var(--brand-strong);
+      padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+      text-transform: capitalize;
+    }
+    .gen-tag {
+      font-size: 10px; padding: 1px 6px; border-radius: 8px;
+      background: var(--bg-3); color: var(--text-3); margin-left: 6px;
+    }
+    .upgrade-state {
+      background: linear-gradient(135deg, #1a1a1a, #3d2c1d);
+      color: #fff;
+      padding: 32px 28px; border-radius: 14px; text-align: center;
+    }
+    .upgrade-state h2 { color: #fff; margin-bottom: 8px; }
+    .month-group { margin-bottom: 22px; }
+    .month-group h3 {
+      font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-3); margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <a href="/relatorios" class="nav-item active">Relatorios</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <h1>Relatorios mensais</h1>
+          <p class="muted small" style="margin-top:4px;">PDF por cliente com producao, taxa de aprovacao e funil. Gerados automaticamente todo dia 1.</p>
+        </div>
+        <div id="gen-controls" style="display:none; gap: 8px;">
+          <select id="gen-client" style="padding:8px 12px; border:1px solid var(--border); border-radius: 8px;"></select>
+          <button class="btn" id="gen-btn">Gerar agora</button>
+        </div>
+      </div>
+
+      <div id="content">Carregando...</div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const MONTH_NAMES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renderUpgrade() {
+      document.getElementById('content').innerHTML = `
+        <div class="upgrade-state">
+          <div style="font-size: 11px; letter-spacing: 0.1em; color: #d9c9b0; font-weight: 700; margin-bottom: 4px;">EXCLUSIVO BLACK</div>
+          <h2>Relatorios mensais por cliente</h2>
+          <p style="opacity:0.9; margin-bottom: 20px; max-width: 480px; margin-left:auto; margin-right:auto;">
+            Todo dia 1 a gente gera automaticamente um PDF de cada cliente com producao, taxa de aprovacao, funil de conteudo e resumo executivo. Voce manda direto pro seu cliente.
+          </p>
+          <a href="/billing" class="btn" style="background:#fff; color:#3d2c1d; border:none;">Fazer upgrade pra BLACK</a>
+        </div>
+      `;
+    }
+
+    function renderReports(reports) {
+      if (reports.length === 0) {
+        document.getElementById('content').innerHTML = `
+          <div class="card" style="text-align:center; padding: 40px 24px;">
+            <h3 style="margin-bottom:8px;">Ainda sem relatorios</h3>
+            <p class="muted">A geracao automatica acontece no dia 1 de cada mes. Voce tambem pode gerar agora pelo botao acima (precisa de um mes ja iniciado).</p>
+          </div>
+        `;
+        return;
+      }
+      // Agrupa por periodo
+      const groups = {};
+      for (const r of reports) {
+        const key = r.period_year + '-' + String(r.period_month).padStart(2, '0');
+        if (!groups[key]) groups[key] = { year: r.period_year, month: r.period_month, items: [] };
+        groups[key].items.push(r);
+      }
+      const keys = Object.keys(groups).sort().reverse();
+      document.getElementById('content').innerHTML = keys.map(k => {
+        const g = groups[k];
+        return `
+          <div class="month-group">
+            <h3>${MONTH_NAMES[g.month - 1]} ${g.year}</h3>
+            ${g.items.map(r => `
+              <div class="report-row">
+                <div class="info">
+                  <div class="name">${escapeHtml(r.client_name)} ${r.instagram_handle ? '<span class="muted small">@' + escapeHtml(r.instagram_handle) + '</span>' : ''}</div>
+                  <div class="meta">
+                    Gerado em ${new Date(r.generated_at).toLocaleString('pt-BR')}
+                    <span class="gen-tag">${r.generated_by === 'cron' ? 'automatico' : 'manual'}</span>
+                  </div>
+                </div>
+                <a href="/api/reports/${r.id}/download" class="btn btn-ghost" download>Baixar PDF</a>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadReports() {
+      try {
+        const { reports } = await window.api.get('/api/reports');
+        renderReports(reports);
+      } catch (err) {
+        document.getElementById('content').innerHTML =
+          `<div class="alert alert-error">Erro carregando: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function loadClientsSelect() {
+      const { clients } = await window.api.get('/api/clients');
+      const sel = document.getElementById('gen-client');
+      if (clients.length === 0) {
+        sel.innerHTML = '<option value="">(nenhum cliente)</option>';
+        document.getElementById('gen-btn').disabled = true;
+        return;
+      }
+      sel.innerHTML = clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    document.getElementById('gen-btn').addEventListener('click', async () => {
+      const clientId = document.getElementById('gen-client').value;
+      if (!clientId) return;
+      const btn = document.getElementById('gen-btn');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Gerando...';
+      try {
+        await window.api.post('/api/reports/generate', { client_id: clientId });
+        await loadReports();
+        btn.textContent = 'Pronto!';
+        setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
+      } catch (err) {
+        alert('Erro: ' + err.message);
+        btn.textContent = original;
+        btn.disabled = false;
+      }
+    });
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+
+      // Cliente externo nao tem acesso a relatorios
+      if (me.role === 'client') {
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      if (me.plan_code !== 'black') {
+        renderUpgrade();
+        return;
+      }
+
+      // BLACK ativo
+      document.getElementById('gen-controls').style.display = 'flex';
+      await Promise.all([loadReports(), loadClientsSelect()]);
+    })();
+  </script>
+</body>
+</html>

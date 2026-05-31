@@ -11,7 +11,7 @@
     <form class="auth-card" id="signup-form">
       <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
       <h1>Criar sua conta</h1>
-      <p class="subtitle">Comece gratis. Sem cartao de credito.</p>
+      <p class="subtitle">Crie sua conta e escolha o plano no proximo passo.</p>
 
       <div id="alert"></div>
 
@@ -59,7 +59,7 @@
           email: document.getElementById('email').value,
           password: document.getElementById('password').value,
         });
-        window.location.href = '/dashboard';
+        window.location.href = '/billing';
       } catch (err) {
         showError(err.message || 'Falha ao criar conta');
         btn.disabled = false;

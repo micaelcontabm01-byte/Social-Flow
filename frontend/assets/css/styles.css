@@ -188,8 +188,50 @@ label {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  position: relative;
 }
 .sidebar .brand-mark { padding: 0 10px 22px; margin: 0; font-size: 16px; }
+
+/* Minimizar / restaurar a sidebar */
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 18px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 7px;
+  border-radius: 7px;
+  transition: all 120ms;
+}
+.sidebar-collapse-btn:hover { background: var(--bg-3); color: var(--text-1); }
+
+.app-shell.sidebar-collapsed { grid-template-columns: 1fr; }
+.app-shell.sidebar-collapsed .sidebar { display: none; }
+
+.sidebar-reopen {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: 18px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+.sidebar-reopen:hover { background: var(--bg-2); }
+.app-shell.sidebar-collapsed ~ .sidebar-reopen { display: flex; }
 
 .nav-item {
   display: flex;

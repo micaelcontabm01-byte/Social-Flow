@@ -55,6 +55,30 @@
         <span class="muted small" id="user-info"></span>
       </div>
 
+      <div id="no-plan-banner" style="display:none; background: linear-gradient(135deg, #b04545, #8b3838); color:#fff; padding: 18px 22px; border-radius: 12px; margin-bottom: 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div>
+            <h3 style="margin:0 0 4px; color:#fff;">Sua conta esta sem plano ativo</h3>
+            <p style="margin:0; opacity: 0.9; font-size: 14px;">Escolha um plano pra liberar geracoes de IA, clientes e o restante das funcionalidades.</p>
+          </div>
+          <a href="/billing" class="btn" style="background:#fff; color:#8b3838; border:none;">Escolher plano</a>
+        </div>
+      </div>
+
+      <div id="black-banner" style="display:none; background: linear-gradient(135deg, #1a1a1a, #3d2c1d); color:#fff; padding: 18px 22px; border-radius: 12px; margin-bottom: 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div>
+            <div style="font-size: 11px; letter-spacing: 0.1em; color: #d9c9b0; font-weight: 700;">BLACK</div>
+            <h3 style="margin:4px 0; color:#fff;">Seus extras BLACK estao prontos</h3>
+            <p style="margin:0; opacity: 0.85; font-size: 14px;" id="black-banner-sub">Grupo VIP com a Mary, relatorios mensais por cliente e suporte prioritario.</p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="/relatorios" class="btn" style="background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3);">Relatorios</a>
+            <a id="black-wpp-btn" href="#" target="_blank" class="btn" style="background:#25D366; color:#fff; border:none; display:none;">Entrar no grupo VIP</a>
+          </div>
+        </div>
+      </div>
+
       <div class="quick-grid" id="quick-actions"></div>
 
       <div class="stats-grid" id="stats"></div>
@@ -133,6 +157,26 @@
       document.getElementById('greeting').textContent = `${greet}, ${me.name.split(' ')[0]}.`;
       document.getElementById('user-info').innerHTML = `<span class="muted">${escapeHtml(me.organization_name)} &middot; ${me.role}</span>`;
 
+      // Banner sem plano
+      if (me.plan_code === 'none' && me.role === 'owner') {
+        document.getElementById('no-plan-banner').style.display = 'block';
+      }
+
+      // Banner BLACK
+      if (me.plan_code === 'black' && me.role === 'owner') {
+        const banner = document.getElementById('black-banner');
+        banner.style.display = 'block';
+        const wpp = me.black_extras && me.black_extras.whatsapp_group_url;
+        if (wpp) {
+          const btn = document.getElementById('black-wpp-btn');
+          btn.href = wpp;
+          btn.style.display = 'inline-block';
+        } else {
+          document.getElementById('black-banner-sub').textContent =
+            'A Mary vai te incluir no grupo VIP do WhatsApp em ate 24h.';
+        }
+      }
+
       document.getElementById('logout-btn').addEventListener('click', async () => {
         await window.api.post('/api/auth/logout');
         window.location.href = '/';
@@ -183,10 +227,13 @@
         cards.push({ label: 'Aprovados este mes', value: stats.approved_month, sub: 'no ciclo atual', sparkData: approvedSpark });
         if (!isClient) cards.push({ label: 'Rascunhos', value: stats.drafts, sub: 'em producao', sparkData: null });
         cards.push({ label: 'Personas', value: stats.personas, sub: 'cadastradas', sparkData: null });
+        const quotaPct = me.ia_quota_limit > 0
+          ? Math.round((me.ia_quota_used / me.ia_quota_limit) * 100)
+          : 0;
         cards.push({
           label: 'Uso de IA',
           value: `${me.ia_quota_used}<span style="font-size:14px; color:var(--text-3); font-weight:500;"> / ${me.ia_quota_limit}</span>`,
-          sub: `${Math.round((me.ia_quota_used / me.ia_quota_limit) * 100)}% do ciclo`,
+          sub: me.ia_quota_limit > 0 ? `${quotaPct}% do ciclo` : 'Sem plano ativo',
           sparkData: null,
         });
 

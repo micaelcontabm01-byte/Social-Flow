@@ -7,6 +7,9 @@ const { getTemplate, listTemplates, emptySlides } = require('../lib/templates');
 const { requireAuth } = require('../middleware/auth');
 const { requireOrgAccess, requireOrgRole } = require('../middleware/tenant');
 const { requireQuota, refundQuota, logUsage } = require('../middleware/quota');
+const drive = require('../lib/drive');
+const { getFreshGoogleToken } = require('../lib/integrations');
+const { carouselPdf, safeFilename } = require('../lib/export-pdf');
 
 const router = express.Router();
 router.use(requireAuth, requireOrgAccess);
@@ -238,6 +241,33 @@ router.delete('/:id', requireOrgRole('owner', 'collaborator'), async (req, res, 
     if (r.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
     res.json({ ok: true });
   } catch (err) { next(err); }
+});
+
+// ===== Export para Google Drive (PDF) =====
+router.post('/:id/export/drive', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
+  try {
+    const cr = await query(
+      `SELECT c.*, cli.name as client_name
+         FROM carousels c JOIN clients cli ON cli.id = c.client_id
+        WHERE c.id = $1 AND c.organization_id = $2`,
+      [req.params.id, req.orgId]
+    );
+    if (cr.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
+    const carousel = cr.rows[0];
+
+    const integ = await getFreshGoogleToken(req.orgId);
+    if (!integ) return res.status(409).json({ error: 'Conecte sua conta do Google Drive em Configuracoes primeiro.' });
+
+    const pdf = await carouselPdf(carousel);
+    // Prefere a pasta do proprio cliente; senao a pasta SocialFlow da org.
+    const cf = await query('SELECT drive_folder_id FROM clients WHERE id = $1', [carousel.client_id]);
+    const folderId = cf.rows[0]?.drive_folder_id || integ.config?.folder_id || null;
+    const file = await drive.uploadPdf(integ.access_token, folderId, safeFilename('carrossel-' + carousel.title), pdf);
+    res.json({ ok: true, url: file.webViewLink });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
 });
 
 module.exports = router;

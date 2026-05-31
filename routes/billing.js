@@ -60,7 +60,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
 router.get('/checkout/:plan', requireAuth, async (req, res, next) => {
   try {
     const plan = getPlan(req.params.plan);
-    if (!plan || plan.code === 'free') {
+    if (!plan || plan.code === 'none') {
       return res.status(400).send('Plano invalido');
     }
     const url = process.env[`LASTLINK_CHECKOUT_${plan.code.toUpperCase()}`];

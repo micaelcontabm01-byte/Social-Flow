@@ -8,6 +8,10 @@ const { requireOrgAccess, requireOrgRole } = require('../middleware/tenant');
 const { requireQuota, refundQuota, logUsage } = require('../middleware/quota');
 const { templates } = require('../lib/email');
 const { notifyClientUsers, notifyOwnersAndCollabs, fullLink } = require('../lib/notifications');
+const notion = require('../lib/notion');
+const drive = require('../lib/drive');
+const { getIntegration, getFreshGoogleToken } = require('../lib/integrations');
+const { scriptPdf, safeFilename } = require('../lib/export-pdf');
 
 const router = express.Router();
 router.use(requireAuth, requireOrgAccess);
@@ -418,6 +422,42 @@ router.delete('/:id', requireOrgRole('owner', 'collaborator'), async (req, res, 
     if (r.rowCount === 0) return res.status(404).json({ error: 'Roteiro nao encontrado' });
     res.json({ ok: true });
   } catch (err) { next(err); }
+});
+
+// ===== Export para Notion =====
+router.post('/:id/export/notion', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
+  try {
+    const script = await getScriptOr404(req.params.id, req.orgId);
+    const integ = await getIntegration(req.orgId, 'notion');
+    if (!integ) return res.status(409).json({ error: 'Conecte sua conta do Notion em Configuracoes primeiro.' });
+    const databaseId = integ.config?.database_id;
+    if (!databaseId) return res.status(409).json({ error: 'Escolha um database do Notion em Configuracoes.' });
+
+    const page = await notion.createPageFromScript(integ.access_token, databaseId, script);
+    res.json({ ok: true, url: page.url });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+});
+
+// ===== Export para Google Drive (PDF) =====
+router.post('/:id/export/drive', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
+  try {
+    const script = await getScriptOr404(req.params.id, req.orgId);
+    const integ = await getFreshGoogleToken(req.orgId);
+    if (!integ) return res.status(409).json({ error: 'Conecte sua conta do Google Drive em Configuracoes primeiro.' });
+
+    const pdf = await scriptPdf(script);
+    // Prefere a pasta do proprio cliente; senao a pasta SocialFlow da org.
+    const cf = await query('SELECT drive_folder_id FROM clients WHERE id = $1', [script.client_id]);
+    const folderId = cf.rows[0]?.drive_folder_id || integ.config?.folder_id || null;
+    const file = await drive.uploadPdf(integ.access_token, folderId, safeFilename('roteiro-' + script.title), pdf);
+    res.json({ ok: true, url: file.webViewLink });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
 });
 
 module.exports = router;

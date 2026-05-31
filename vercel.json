@@ -8,5 +8,11 @@
     "api/index.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/monthly-reports",
+      "schedule": "0 8 1 * *"
+    }
+  ]
 }
