@@ -68,7 +68,7 @@
       <div class="tab-content" id="tab-personas">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <h3>Personas deste cliente</h3>
-          <a class="btn" id="new-persona-btn">+ Gerar nova com IA</a>
+          <a class="btn" id="new-persona-btn">+ Gerar Persona</a>
         </div>
         <div id="personas-list"></div>
       </div>
@@ -206,7 +206,7 @@
         $('#personas-list').innerHTML = `
           <div class="card" style="text-align:center; padding:40px;">
             <p class="muted">Esse cliente ainda nao tem persona.</p>
-            <a href="/persona-nova?client_id=${clientId}" class="btn" style="margin-top:14px;">Gerar primeira persona com IA</a>
+            <a href="/persona-nova?client_id=${clientId}" class="btn" style="margin-top:14px;">Gerar primeira persona</a>
           </div>`;
         return;
       }
