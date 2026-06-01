@@ -192,7 +192,7 @@ label {
 }
 .sidebar .brand-mark { padding: 0 10px 22px; margin: 0; font-size: 16px; }
 
-/* Minimizar / restaurar a sidebar */
+/* Minimizar / restaurar a sidebar (vira uma barra estreita so com a logo) */
 .sidebar-collapse-btn {
   position: absolute;
   top: 18px;
@@ -209,29 +209,25 @@ label {
 }
 .sidebar-collapse-btn:hover { background: var(--bg-3); color: var(--text-1); }
 
-.app-shell.sidebar-collapsed { grid-template-columns: 1fr; }
-.app-shell.sidebar-collapsed .sidebar { display: none; }
-
-.sidebar-reopen {
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 60;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-1);
-  color: var(--text-1);
-  font-size: 18px;
-  cursor: pointer;
-  display: none;
-  align-items: center;
+/* Estado recolhido: rail de 64px com a logo no topo */
+.app-shell.sidebar-collapsed { grid-template-columns: 64px 1fr; }
+.app-shell.sidebar-collapsed .sidebar { padding: 22px 0; align-items: center; }
+.app-shell.sidebar-collapsed .sidebar .nav-item { display: none; }
+.app-shell.sidebar-collapsed .sidebar .brand-mark {
+  padding: 0 0 16px;
+  font-size: 0;            /* esconde o texto "SocialFlow", mantem a logo */
+  gap: 0;
   justify-content: center;
-  box-shadow: var(--shadow);
 }
-.sidebar-reopen:hover { background: var(--bg-2); }
-.app-shell.sidebar-collapsed ~ .sidebar-reopen { display: flex; }
+.app-shell.sidebar-collapsed .sidebar-collapse-btn {
+  position: static;
+  margin-top: 4px;
+}
+
+@media (max-width: 760px) {
+  /* No mobile o grid ja vira 1 coluna; o rail nao se aplica */
+  .app-shell.sidebar-collapsed { grid-template-columns: 1fr; }
+}
 
 .nav-item {
   display: flex;

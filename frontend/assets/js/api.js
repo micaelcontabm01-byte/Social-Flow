@@ -47,39 +47,36 @@ window.requireSession = async function () {
   }
 };
 
-// Botao de minimizar/restaurar a sidebar. Roda em toda pagina do app via
-// requireSession. Estado fica salvo em localStorage entre paginas.
+// Botao de minimizar/restaurar a sidebar. Ao recolher, vira uma barra estreita
+// (rail) so com a logo - o proprio botao alterna os dois estados, sem botao
+// flutuante sobre o conteudo. Estado salvo em localStorage entre paginas.
 window.initSidebarToggle = function () {
   const shell = document.querySelector('.app-shell');
   const sidebar = document.querySelector('.sidebar');
   if (!shell || !sidebar || sidebar.querySelector('.sidebar-collapse-btn')) return;
 
-  const collapseBtn = document.createElement('button');
-  collapseBtn.type = 'button';
-  collapseBtn.className = 'sidebar-collapse-btn';
-  collapseBtn.title = 'Minimizar menu';
-  collapseBtn.setAttribute('aria-label', 'Minimizar menu');
-  collapseBtn.innerHTML = '&laquo;';
-  sidebar.appendChild(collapseBtn);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sidebar-collapse-btn';
+  sidebar.appendChild(btn);
 
-  const reopen = document.createElement('button');
-  reopen.type = 'button';
-  reopen.className = 'sidebar-reopen';
-  reopen.title = 'Abrir menu';
-  reopen.setAttribute('aria-label', 'Abrir menu');
-  reopen.innerHTML = '&#9776;'; // hamburguer
-  document.body.appendChild(reopen);
-
+  function sync() {
+    const collapsed = shell.classList.contains('sidebar-collapsed');
+    btn.innerHTML = collapsed ? '&raquo;' : '&laquo;';
+    btn.title = collapsed ? 'Expandir menu' : 'Minimizar menu';
+    btn.setAttribute('aria-label', btn.title);
+  }
   function setCollapsed(v) {
     shell.classList.toggle('sidebar-collapsed', v);
     try { localStorage.setItem('sf_sidebar_collapsed', v ? '1' : '0'); } catch (e) {}
+    sync();
   }
-  collapseBtn.addEventListener('click', () => setCollapsed(true));
-  reopen.addEventListener('click', () => setCollapsed(false));
+  btn.addEventListener('click', () => setCollapsed(!shell.classList.contains('sidebar-collapsed')));
 
   let saved = '0';
   try { saved = localStorage.getItem('sf_sidebar_collapsed') || '0'; } catch (e) {}
   if (saved === '1') shell.classList.add('sidebar-collapsed');
+  sync();
 };
 
 window.applySidebarForRole = function (role) {
