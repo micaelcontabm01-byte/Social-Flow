@@ -442,8 +442,8 @@
       // Feedback pos-OAuth (?integration=conectado|erro|erro_state)
       const integParam = new URLSearchParams(location.search).get('integration');
       if (integParam) {
-        if (integParam === 'conectado') alert('Conta conectada com sucesso!');
-        else if (integParam.startsWith('erro')) alert('Nao foi possivel conectar. Tente novamente.');
+        if (integParam === 'conectado') window.popup({ title: 'Conta conectada!', icon: '✅', message: 'Integracao conectada com sucesso. Agora voce ja pode exportar conteudo.' });
+        else if (integParam.startsWith('erro')) window.popup.alert('Nao foi possivel conectar. Tente novamente.', 'Ops');
         history.replaceState(null, '', '/configuracoes');
       }
 

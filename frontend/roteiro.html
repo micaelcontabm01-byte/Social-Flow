@@ -318,14 +318,30 @@
 
     async function exportTo(target, btn) {
       const orig = btn.textContent;
+      const label = target === 'notion' ? 'Notion' : 'Drive';
       btn.disabled = true;
       btn.textContent = 'Exportando...';
       try {
         const r = await window.api.post(`/api/scripts/${id}/export/${target}`);
         btn.textContent = 'Pronto!';
-        if (r.url && confirm('Exportado com sucesso! Abrir agora?')) window.open(r.url, '_blank');
+        if (r.url) {
+          const open = await window.popup({
+            title: 'Exportado com sucesso!', icon: '✅',
+            message: `Seu roteiro foi enviado para o ${label}. Quer abrir agora?`,
+            confirmText: 'Abrir', cancelText: 'Depois',
+          });
+          if (open) window.open(r.url, '_blank');
+        }
       } catch (err) {
-        alert('Erro ao exportar: ' + err.message);
+        if (err.status === 409) {
+          const go = await window.popup({
+            title: `Conecte o ${label}`, icon: '🔗', message: err.message,
+            confirmText: 'Ir para Configuracoes', cancelText: 'Agora nao',
+          });
+          if (go) location.href = '/configuracoes';
+        } else {
+          await window.popup.alert('Erro ao exportar: ' + err.message, 'Ops');
+        }
       } finally {
         setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
       }

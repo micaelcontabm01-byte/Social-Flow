@@ -248,16 +248,34 @@
         $('#drive-feedback').textContent = 'Pasta pronta!';
         const { client } = await window.api.get('/api/clients/' + clientId);
         renderDriveArea(client);
-        if (r.folder_url && confirm('Pasta criada! Abrir agora?')) window.open(r.folder_url, '_blank');
+        if (r.folder_url) {
+          const open = await window.popup({
+            title: 'Pasta criada!', icon: '📁', message: 'A pasta do cliente foi criada no seu Google Drive. Quer abrir agora?',
+            confirmText: 'Abrir no Drive', cancelText: 'Depois',
+          });
+          if (open) window.open(r.folder_url, '_blank');
+        }
       } catch (err) {
         $('#drive-feedback').textContent = '';
-        alert(err.status === 409 ? err.message : 'Erro ao criar pasta: ' + err.message);
         btn.disabled = false; btn.textContent = orig;
+        if (err.status === 409) {
+          await window.popup({
+            title: 'Conecte o Google Drive', icon: '🔗', message: err.message,
+            confirmText: 'Ir para Configuracoes', cancelText: 'Agora nao',
+          }) && (location.href = '/configuracoes');
+        } else {
+          await window.popup.alert('Erro ao criar pasta: ' + err.message, 'Ops');
+        }
       }
     }
 
     $('#delete-btn').addEventListener('click', async () => {
-      if (!confirm('Arquivar esse cliente? Vai sumir da listagem mas o historico fica salvo.')) return;
+      const ok = await window.popup({
+        title: 'Arquivar cliente', icon: '🗄️', danger: true,
+        message: 'O cliente vai sumir da listagem, mas o historico fica salvo. Deseja continuar?',
+        confirmText: 'Arquivar', cancelText: 'Cancelar',
+      });
+      if (!ok) return;
       await window.api.del('/api/clients/' + clientId);
       location.href = '/clientes';
     });

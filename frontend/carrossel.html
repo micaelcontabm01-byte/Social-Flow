@@ -216,9 +216,24 @@
           await save();
           const r = await window.api.post('/api/carousels/' + id + '/export/drive');
           expDrive.textContent = 'Pronto!';
-          if (r.url && confirm('Salvo no Drive! Abrir agora?')) window.open(r.url, '_blank');
+          if (r.url) {
+            const open = await window.popup({
+              title: 'Salvo no Drive!', icon: '📁',
+              message: 'O PDF do carrossel foi salvo no seu Google Drive. Quer abrir agora?',
+              confirmText: 'Abrir', cancelText: 'Depois',
+            });
+            if (open) window.open(r.url, '_blank');
+          }
         } catch (err) {
-          alert('Erro ao exportar: ' + err.message);
+          if (err.status === 409) {
+            const go = await window.popup({
+              title: 'Conecte o Google Drive', icon: '🔗', message: err.message,
+              confirmText: 'Ir para Configuracoes', cancelText: 'Agora nao',
+            });
+            if (go) location.href = '/configuracoes';
+          } else {
+            await window.popup.alert('Erro ao exportar: ' + err.message, 'Ops');
+          }
         } finally {
           setTimeout(() => { expDrive.textContent = orig; expDrive.disabled = false; }, 1500);
         }
