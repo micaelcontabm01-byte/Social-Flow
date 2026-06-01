@@ -53,6 +53,63 @@ async function refundQuota(orgId) {
   );
 }
 
+// ===== Cota de IMAGEM (balde separado: img_quota_*) =====
+// Imagem custa muito mais que texto, entao tem limite proprio por plano.
+async function checkAndReserveImageQuota(orgId) {
+  return await tx(async (c) => {
+    const res = await c.query(
+      `SELECT img_quota_limit, img_quota_used FROM organizations WHERE id = $1 FOR UPDATE`,
+      [orgId]
+    );
+    if (res.rowCount === 0) {
+      const e = new Error('Organizacao nao encontrada');
+      e.code = 'ORG_NOT_FOUND';
+      throw e;
+    }
+    const org = res.rows[0];
+    if (org.img_quota_used >= org.img_quota_limit) {
+      const e = new Error('Limite de geracao de imagem atingido neste ciclo');
+      e.code = 'IMG_QUOTA_EXCEEDED';
+      e.quota = { used: org.img_quota_used, limit: org.img_quota_limit };
+      throw e;
+    }
+    await c.query(
+      `UPDATE organizations SET img_quota_used = img_quota_used + 1 WHERE id = $1`,
+      [orgId]
+    );
+    return {
+      used: org.img_quota_used + 1,
+      limit: org.img_quota_limit,
+      remaining: org.img_quota_limit - org.img_quota_used - 1,
+    };
+  });
+}
+
+async function refundImageQuota(orgId) {
+  await query(
+    `UPDATE organizations SET img_quota_used = greatest(0, img_quota_used - 1) WHERE id = $1`,
+    [orgId]
+  );
+}
+
+function requireImageQuota() {
+  return async (req, res, next) => {
+    try {
+      const reservation = await checkAndReserveImageQuota(req.session.currentOrgId);
+      req.imgQuota = reservation;
+      next();
+    } catch (e) {
+      if (e.code === 'IMG_QUOTA_EXCEEDED') {
+        return res.status(429).json({
+          error: 'Limite de geracao de imagem atingido neste ciclo. Faca upgrade do plano para gerar mais.',
+          quota: e.quota,
+        });
+      }
+      next(e);
+    }
+  };
+}
+
 async function logUsage({ organizationId, userId, kind, usage, model, costUsd }) {
   try {
     await query(
@@ -93,4 +150,7 @@ function requireQuota(kind) {
   };
 }
 
-module.exports = { checkAndReserveQuota, refundQuota, logUsage, requireQuota };
+module.exports = {
+  checkAndReserveQuota, refundQuota, logUsage, requireQuota,
+  checkAndReserveImageQuota, refundImageQuota, requireImageQuota,
+};

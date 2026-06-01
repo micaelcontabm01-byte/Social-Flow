@@ -6,7 +6,8 @@ const { carouselPrompt, parseJsonFromText } = require('../lib/prompts');
 const { getTemplate, listTemplates, emptySlides } = require('../lib/templates');
 const { requireAuth } = require('../middleware/auth');
 const { requireOrgAccess, requireOrgRole } = require('../middleware/tenant');
-const { requireQuota, refundQuota, logUsage } = require('../middleware/quota');
+const { requireQuota, refundQuota, logUsage, requireImageQuota, refundImageQuota } = require('../middleware/quota');
+const { generateCoverImage } = require('../lib/images');
 const drive = require('../lib/drive');
 const { getFreshGoogleToken } = require('../lib/integrations');
 const { carouselPdf, safeFilename } = require('../lib/export-pdf');
@@ -186,7 +187,11 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const r = await query(
-      `SELECT c.*, cli.name as client_name
+      `SELECT c.id, c.organization_id, c.client_id, c.persona_id, c.script_id,
+              c.template_id, c.title, c.slides, c.status, c.raw_input,
+              c.generated_by_ai, c.created_at, c.updated_at,
+              (c.cover_image_data IS NOT NULL) AS has_cover,
+              cli.name as client_name
        FROM carousels c
        JOIN clients cli ON cli.id = c.client_id
        WHERE c.id = $1 AND c.organization_id = $2`,
@@ -243,6 +248,88 @@ router.delete('/:id', requireOrgRole('owner', 'collaborator'), async (req, res, 
   } catch (err) { next(err); }
 });
 
+// ===== Serve a imagem de capa do carrossel (publico - usado no preview/cliente) =====
+router.get('/:id/cover', async (req, res, next) => {
+  try {
+    const r = await query(
+      `SELECT cover_image_data, cover_image_mime, cover_image_updated_at
+         FROM carousels WHERE id = $1 AND organization_id = $2`,
+      [req.params.id, req.orgId]
+    );
+    if (r.rowCount === 0 || !r.rows[0].cover_image_data) {
+      return res.status(404).send('Sem capa');
+    }
+    const row = r.rows[0];
+    res.setHeader('Content-Type', row.cover_image_mime || 'image/png');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    if (row.cover_image_updated_at) {
+      res.setHeader('Last-Modified', new Date(row.cover_image_updated_at).toUTCString());
+    }
+    res.end(Buffer.from(row.cover_image_data));
+  } catch (err) { next(err); }
+});
+
+// ===== Gera (com IA) a imagem de capa do carrossel - desconta da cota de imagem =====
+router.post('/:id/cover/generate',
+  requireOrgRole('owner', 'collaborator'),
+  async (req, res, next) => {
+    // Carrega o carrossel + nicho do cliente antes de reservar a cota.
+    try {
+      const cr = await query(
+        `SELECT c.id, c.title, c.template_id, c.raw_input, cli.niche
+           FROM carousels c JOIN clients cli ON cli.id = c.client_id
+          WHERE c.id = $1 AND c.organization_id = $2`,
+        [req.params.id, req.orgId]
+      );
+      if (cr.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
+      req.carousel = cr.rows[0];
+      next();
+    } catch (err) { next(err); }
+  },
+  requireImageQuota(),
+  async (req, res, next) => {
+    const c = req.carousel;
+    try {
+      const theme = c.raw_input?.theme || null;
+      const { buffer, mime } = await generateCoverImage({
+        niche: c.niche, theme, title: c.title, quality: 'medium',
+      });
+      await query(
+        `UPDATE carousels SET cover_image_data = $1, cover_image_mime = $2,
+                cover_image_updated_at = now(), updated_at = now()
+           WHERE id = $3 AND organization_id = $4`,
+        [buffer, mime, c.id, req.orgId]
+      );
+      await logUsage({
+        organizationId: req.orgId, userId: req.session.userId,
+        kind: 'carousel_cover_image', model: 'gpt-image-1',
+      });
+      res.json({ ok: true, cover_url: `/api/carousels/${c.id}/cover?v=${Date.now()}`, quota: req.imgQuota });
+    } catch (err) {
+      // Falhou a geracao: devolve a cota reservada.
+      try { await refundImageQuota(req.orgId); } catch {}
+      if (err.code === 'NO_OPENAI_KEY') {
+        return res.status(503).json({ error: 'Geracao de imagem indisponivel (chave da OpenAI nao configurada). Avise o administrador.' });
+      }
+      next(err);
+    }
+  }
+);
+
+// ===== Remove a imagem de capa =====
+router.delete('/:id/cover', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
+  try {
+    const r = await query(
+      `UPDATE carousels SET cover_image_data = NULL, cover_image_mime = NULL,
+              cover_image_updated_at = now(), updated_at = now()
+         WHERE id = $1 AND organization_id = $2 RETURNING id`,
+      [req.params.id, req.orgId]
+    );
+    if (r.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 // ===== Export para Google Drive (PDF) =====
 router.post('/:id/export/drive', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
   try {
@@ -258,6 +345,7 @@ router.post('/:id/export/drive', requireOrgRole('owner', 'collaborator'), async 
     const integ = await getFreshGoogleToken(req.orgId);
     if (!integ) return res.status(409).json({ error: 'Conecte sua conta do Google Drive em Configuracoes primeiro.' });
 
+    if (carousel.cover_image_data) carousel.cover_buffer = Buffer.from(carousel.cover_image_data);
     const pdf = await carouselPdf(carousel);
     // Prefere a pasta do proprio cliente; senao a pasta SocialFlow da org.
     const cf = await query('SELECT drive_folder_id FROM clients WHERE id = $1', [carousel.client_id]);
