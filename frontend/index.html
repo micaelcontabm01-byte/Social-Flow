@@ -11,9 +11,13 @@
 <body>
   <nav class="landing-nav">
     <div class="brand-mark"><img src="/assets/img/logo.svg" alt="SocialFlow" />SocialFlow</div>
-    <div class="links">
+    <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="links" id="nav-links">
       <a href="#features">Recursos</a>
       <a href="#how">Como funciona</a>
+      <a href="#mary">A Mary</a>
       <a href="#pricing">Planos</a>
       <a href="#faq">FAQ</a>
       <a href="/login" class="btn btn-ghost btn-sm">Entrar</a>
@@ -34,6 +38,12 @@
     <div class="hero-actions">
       <a href="/signup" class="btn btn-lg">Comecar agora &rarr;</a>
       <a href="#how" class="btn btn-ghost btn-lg">Ver como funciona</a>
+    </div>
+    <div class="chat-strip" style="margin-top: 36px;">
+      <span class="chat-bubble">Social Media</span>
+      <span class="chat-bubble right">Editor de video</span>
+      <span class="chat-bubble">Designer</span>
+      <span class="chat-bubble right">tudo num lugar so ✨</span>
     </div>
     <div class="hero-meta">
       <span>A partir de R$ 47/mes</span>
@@ -105,6 +115,29 @@
           <div class="step-num">4</div>
           <h3>Cliente aprova</h3>
           <p>Cliente recebe email, entra, aprova ou comenta. Voce posta.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="mary">
+    <div class="container">
+      <div class="mary reveal">
+        <div>
+          <span class="eyebrow">Quem ta por tras 🤎</span>
+          <h2>Criado com a Mary, sua expert de conteudo</h2>
+          <p>
+            O SocialFlow nasceu da rotina real de quem vive de social media. A Mary (<a href="https://www.instagram.com/_smaryy/" target="_blank" rel="noopener" style="color:var(--accent-2);">@_smaryy_</a>)
+            ajudou a desenhar cada tela pra fazer o que toda agencia precisa: produzir mais rapido, com a sua cara, e com o cliente aprovando sem dor de cabeca.
+          </p>
+          <p>No plano BLACK voce ainda tem suporte VIP com ela direto no WhatsApp.</p>
+          <div class="signature">Mary fala, a gente faz.</div>
+        </div>
+        <div class="mary-chats">
+          <span class="chat-bubble light">e o jeito que seu conteudo deveria ser</span>
+          <span class="chat-bubble">arrasta pro lado e entende 👀</span>
+          <span class="chat-bubble light">autenticidade vende</span>
+          <span class="chat-bubble">bora postar?</span>
         </div>
       </div>
     </div>
@@ -207,9 +240,49 @@
   </footer>
 
   <script>
+    // FAQ acordeao
     document.querySelectorAll('.faq-q').forEach(q => {
       q.addEventListener('click', () => q.parentElement.classList.toggle('open'));
     });
+
+    // Menu mobile
+    const navToggle = document.getElementById('nav-toggle');
+    const navLinks = document.getElementById('nav-links');
+    if (navToggle && navLinks) {
+      navToggle.addEventListener('click', () => {
+        const open = navLinks.classList.toggle('open');
+        navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      navLinks.querySelectorAll('a').forEach(a => {
+        a.addEventListener('click', () => navLinks.classList.remove('open'));
+      });
+    }
+
+    // Scroll reveal: marca cards/sessoes como .reveal e revela ao entrar na tela
+    const revealEls = document.querySelectorAll('.feature-card, .step, .price-card, .faq-item, .mary, .chat-strip');
+    revealEls.forEach(el => el.classList.add('reveal'));
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e, i) => {
+          if (e.isIntersecting) {
+            e.target.style.transitionDelay = Math.min(i * 40, 200) + 'ms';
+            e.target.classList.add('in');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      revealEls.forEach(el => io.observe(el));
+    } else {
+      revealEls.forEach(el => el.classList.add('in'));
+    }
+
+    // Header com sombra ao rolar
+    const nav = document.querySelector('.landing-nav');
+    if (nav) {
+      const onScroll = () => nav.style.boxShadow = window.scrollY > 8 ? 'var(--shadow)' : 'none';
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
   </script>
 </body>
 </html>

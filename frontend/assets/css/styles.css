@@ -1,35 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&display=swap');
 
 :root {
-  --bg-0: #faf6f0;
-  --bg-1: #ffffff;
-  --bg-2: #f3ece0;
-  --bg-3: #ebe2d3;
-  --border: #e3d6bf;
-  --border-strong: #c4b094;
-  --text-1: #2a1d10;
-  --text-2: #6b5848;
-  --text-3: #9a8970;
-  --text-on-brand: #faf6f0;
-  --brand: #a0826d;
-  --brand-hover: #8b6f47;
-  --brand-strong: #6f5535;
-  --brand-dark: #4a3823;
-  --brand-soft: rgba(160, 130, 109, 0.15);
-  --brand-glow: rgba(200, 156, 94, 0.25);
-  --accent: #c89c5e;
-  --accent-2: #d4a574;
+  /* Paleta inspirada na identidade da Mary (@_smaryy_): creme quente + marrom chocolate */
+  --bg-0: #f7f1e8;
+  --bg-1: #fffdfa;
+  --bg-2: #efe6d8;
+  --bg-3: #e6dac6;
+  --border: #ddcdb2;
+  --border-strong: #bda47f;
+  --text-1: #2e1f12;
+  --text-2: #6b5544;
+  --text-3: #9a8364;
+  --text-on-brand: #f7f1e8;
+  --brand: #8a6a4a;
+  --brand-hover: #6f5132;
+  --brand-strong: #533a22;
+  --brand-dark: #3a2716;
+  --brand-soft: rgba(138, 106, 74, 0.14);
+  --brand-glow: rgba(180, 130, 78, 0.25);
+  --accent: #b07a3f;
+  --accent-2: #c89456;
+  --chocolate: #3a2716;       /* balao de chat escuro (assinatura da Mary) */
+  --cream: #f4e9d8;
   --success: #2d8659;
-  --danger: #c4534e;
+  --danger: #b6453f;
   --warning: #b87b1a;
-  --radius: 14px;
-  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-sm: 11px;
   --radius-xs: 6px;
-  --shadow-sm: 0 2px 8px rgba(80, 60, 40, 0.06);
-  --shadow: 0 4px 24px rgba(80, 60, 40, 0.08);
-  --shadow-lg: 0 12px 40px rgba(80, 60, 40, 0.14);
-  --shadow-brand: 0 8px 32px rgba(160, 130, 109, 0.28);
+  --shadow-sm: 0 2px 8px rgba(58, 39, 22, 0.06);
+  --shadow: 0 6px 28px rgba(58, 39, 22, 0.10);
+  --shadow-lg: 0 16px 48px rgba(58, 39, 22, 0.16);
+  --shadow-brand: 0 10px 34px rgba(138, 106, 74, 0.30);
   --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -160,11 +164,12 @@ label {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-weight: 800;
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
   margin-bottom: 24px;
   color: var(--text-1);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .brand-mark img { width: 28px; height: 28px; display: block; }
 .brand-mark .dot {
@@ -255,7 +260,7 @@ label {
   flex-wrap: wrap;
   gap: 12px;
 }
-.page-head h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.page-head h1 { font-family: var(--font-display); font-size: 28px; font-weight: 600; letter-spacing: -0.015em; font-optical-sizing: auto; }
 
 /* Landing */
 .landing-nav {
@@ -295,10 +300,12 @@ label {
   letter-spacing: -0.005em;
 }
 .hero h1 {
-  font-size: clamp(36px, 6vw, 64px);
-  line-height: 1.04;
-  letter-spacing: -0.035em;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: clamp(38px, 6.2vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  font-optical-sizing: auto;
   margin-bottom: 22px;
 }
 .hero h1 .grad {
@@ -314,7 +321,7 @@ label {
 .hero-meta span::before { content: "✓"; color: var(--brand); font-weight: 700; }
 
 .section { padding: 80px 24px; }
-.section h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -0.025em; text-align: center; margin-bottom: 14px; }
+.section h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(29px, 4vw, 44px); letter-spacing: -0.015em; text-align: center; margin-bottom: 14px; font-optical-sizing: auto; }
 .section .section-sub { text-align: center; color: var(--text-2); max-width: 600px; margin: 0 auto 48px; font-size: 17px; }
 
 .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
@@ -450,12 +457,96 @@ label {
   padding: 18px 24px; border-bottom: 1px solid var(--border); background: var(--bg-0);
 }
 
+/* ===== Identidade Mary: balao de chat (assinatura visual do feed) ===== */
+.chat-bubble {
+  display: inline-block;
+  background: var(--chocolate);
+  color: var(--cream);
+  padding: 9px 18px;
+  border-radius: 18px 18px 18px 4px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.chat-bubble.right { border-radius: 18px 18px 4px 18px; }
+.chat-bubble.light { background: var(--cream); color: var(--brand-strong); border: 1px solid var(--border); }
+
+/* faixa de "conversa" decorativa */
+.chat-strip { display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center; max-width: 640px; margin: 0 auto; }
+.chat-strip .chat-bubble:nth-child(even) { align-self: flex-end; }
+
+/* ===== Secao da Mary (expert) ===== */
+.mary {
+  background:
+    radial-gradient(120% 120% at 85% 0%, rgba(176,122,63,0.18), transparent 55%),
+    var(--chocolate);
+  color: var(--cream);
+  border-radius: 24px;
+  padding: 56px 40px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  overflow: hidden;
+}
+.mary .eyebrow { background: rgba(244,233,216,0.12); color: var(--cream); }
+.mary h2 { font-family: var(--font-display); font-size: clamp(28px, 3.5vw, 40px); font-weight: 600; line-height: 1.1; margin-bottom: 16px; color: var(--cream); text-align: left; letter-spacing: -0.015em; }
+.mary p { color: rgba(244,233,216,0.82); font-size: 16px; line-height: 1.6; margin-bottom: 14px; }
+.mary .mary-chats { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.mary .mary-chats .chat-bubble:nth-child(even) { align-self: flex-end; }
+.mary .signature { font-family: var(--font-display); font-style: italic; font-size: 22px; color: var(--accent-2); margin-top: 10px; }
+
+/* ===== Mobile nav (hamburguer) ===== */
+.nav-toggle { display: none; background: none; border: none; padding: 6px; cursor: pointer; color: var(--text-1); }
+.nav-toggle svg { display: block; }
+
+/* ===== Scroll reveal (IntersectionObserver adiciona .in) ===== */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 600ms ease, transform 600ms cubic-bezier(0.2,0.7,0.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* botoes com leve "lift" no hover (mais interativo) */
+.btn { will-change: transform; }
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+@media (max-width: 860px) {
+  .mary { grid-template-columns: 1fr; padding: 40px 24px; gap: 28px; }
+  .mary h2 { text-align: center; }
+}
+
 @media (max-width: 720px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   .main { padding: 22px 18px; }
   .landing-nav { padding: 14px 18px; }
-  .landing-nav .links { display: none; }
   .hero { padding: 60px 18px 30px; }
   .section { padding: 56px 18px; }
+
+  /* nav vira menu colapsavel */
+  .nav-toggle { display: inline-flex; }
+  .landing-nav .links {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 12px 18px 18px;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .landing-nav .links.open { display: flex; }
+  .landing-nav .links a { padding: 10px 12px; border-radius: var(--radius-sm); }
+  .landing-nav .links a:hover { background: var(--bg-2); }
+  .landing-nav .links .btn { justify-content: center; }
+}
+
+/* Respeita quem prefere menos animacao */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .fade-up { animation: none; }
 }
