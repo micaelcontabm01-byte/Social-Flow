@@ -6,8 +6,8 @@ const { carouselPrompt, parseJsonFromText } = require('../lib/prompts');
 const { getTemplate, listTemplates, emptySlides } = require('../lib/templates');
 const { requireAuth } = require('../middleware/auth');
 const { requireOrgAccess, requireOrgRole } = require('../middleware/tenant');
-const { requireQuota, refundQuota, logUsage, requireImageQuota, refundImageQuota } = require('../middleware/quota');
-const { generateCoverImage } = require('../lib/images');
+const { requireQuota, refundQuota, logUsage, peekImageQuota, debitImageQuotaN } = require('../middleware/quota');
+const { buildSlidePrompt, generateImageFromPrompt } = require('../lib/images');
 const drive = require('../lib/drive');
 const { getFreshGoogleToken } = require('../lib/integrations');
 const { carouselPdf, safeFilename } = require('../lib/export-pdf');
@@ -190,7 +190,6 @@ router.get('/:id', async (req, res, next) => {
       `SELECT c.id, c.organization_id, c.client_id, c.persona_id, c.script_id,
               c.template_id, c.title, c.slides, c.status, c.raw_input,
               c.generated_by_ai, c.created_at, c.updated_at,
-              (c.cover_image_data IS NOT NULL) AS has_cover,
               cli.name as client_name
        FROM carousels c
        JOIN clients cli ON cli.id = c.client_id
@@ -202,7 +201,14 @@ router.get('/:id', async (req, res, next) => {
       if (r.rows[0].client_id !== req.memberClientId) return res.status(403).json({ error: 'Sem acesso' });
       if (r.rows[0].status === 'draft') return res.status(403).json({ error: 'Sem acesso a rascunhos' });
     }
-    res.json({ carousel: r.rows[0] });
+    // Indices de slides que ja tem imagem gerada (pro frontend montar os fundos).
+    const imgs = await query(
+      `SELECT slide_index FROM carousel_slide_images WHERE carousel_id = $1 ORDER BY slide_index`,
+      [req.params.id]
+    );
+    const carousel = r.rows[0];
+    carousel.image_slides = imgs.rows.map((x) => x.slide_index);
+    res.json({ carousel });
   } catch (err) { next(err); }
 });
 
@@ -248,84 +254,147 @@ router.delete('/:id', requireOrgRole('owner', 'collaborator'), async (req, res, 
   } catch (err) { next(err); }
 });
 
-// ===== Serve a imagem de capa do carrossel (publico - usado no preview/cliente) =====
-router.get('/:id/cover', async (req, res, next) => {
+// ===== Serve a imagem de um slide (membros da org; cliente so ve do proprio cliente) =====
+router.get('/:id/slide-image/:index', async (req, res, next) => {
   try {
     const r = await query(
-      `SELECT cover_image_data, cover_image_mime, cover_image_updated_at
-         FROM carousels WHERE id = $1 AND organization_id = $2`,
-      [req.params.id, req.orgId]
+      `SELECT si.image_data, si.image_mime, c.client_id, c.status
+         FROM carousel_slide_images si
+         JOIN carousels c ON c.id = si.carousel_id
+        WHERE si.carousel_id = $1 AND si.slide_index = $2 AND c.organization_id = $3`,
+      [req.params.id, parseInt(req.params.index, 10) || 0, req.orgId]
     );
-    if (r.rowCount === 0 || !r.rows[0].cover_image_data) {
-      return res.status(404).send('Sem capa');
-    }
+    if (r.rowCount === 0 || !r.rows[0].image_data) return res.status(404).send('Sem imagem');
     const row = r.rows[0];
-    res.setHeader('Content-Type', row.cover_image_mime || 'image/png');
-    res.setHeader('Cache-Control', 'private, max-age=300');
-    if (row.cover_image_updated_at) {
-      res.setHeader('Last-Modified', new Date(row.cover_image_updated_at).toUTCString());
+    // Mesma regra do GET /:id: cliente so ve conteudo do proprio cliente e nao-rascunho.
+    if (req.role === 'client') {
+      if (row.client_id !== req.memberClientId || row.status === 'draft') {
+        return res.status(403).send('Sem acesso');
+      }
     }
-    res.end(Buffer.from(row.cover_image_data));
+    res.setHeader('Content-Type', row.image_mime || 'image/png');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.end(Buffer.from(row.image_data));
   } catch (err) { next(err); }
 });
 
-// ===== Gera (com IA) a imagem de capa do carrossel - desconta da cota de imagem =====
-router.post('/:id/cover/generate',
+// Helper: monta a lista de slides (numero + texto agregado) a partir do template.
+function slideContexts(templateId, slides) {
+  const template = getTemplate(templateId);
+  const out = [];
+  if (template) {
+    const grouped = {};
+    for (const f of template.fields) (grouped[f.slide] = grouped[f.slide] || []).push(f);
+    Object.keys(grouped).sort((a, b) => +a - +b).forEach((n) => {
+      const text = grouped[n].map((f) => slides?.[f.key]).filter(Boolean).join('. ');
+      out.push({ index: Number(n), text });
+    });
+  } else {
+    Object.values(slides || {}).forEach((v, i) => out.push({ index: i + 1, text: String(v || '') }));
+  }
+  return out;
+}
+
+// ===== Gera (com IA) imagem de fundo para TODOS os slides =====
+// Pre-checa a cota (read-only), gera em paralelo tolerando falha individual,
+// e SO debita a cota das imagens que REALMENTE geraram. Assim um timeout da
+// Vercel (60s) nunca queima cota sem entregar imagem.
+router.post('/:id/images/generate',
   requireOrgRole('owner', 'collaborator'),
   async (req, res, next) => {
-    // Carrega o carrossel + nicho do cliente antes de reservar a cota.
     try {
       const cr = await query(
-        `SELECT c.id, c.title, c.template_id, c.raw_input, cli.niche
+        `SELECT c.id, c.title, c.template_id, c.slides, c.raw_input, cli.niche
            FROM carousels c JOIN clients cli ON cli.id = c.client_id
           WHERE c.id = $1 AND c.organization_id = $2`,
         [req.params.id, req.orgId]
       );
       if (cr.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
       req.carousel = cr.rows[0];
+      req.contexts = slideContexts(cr.rows[0].template_id, cr.rows[0].slides);
+      if (req.contexts.length === 0) return res.status(400).json({ error: 'Carrossel sem slides' });
       next();
     } catch (err) { next(err); }
   },
-  requireImageQuota(),
+  async (req, res, next) => {
+    // Pre-check read-only: se nao cabe N, 429 antes de gastar OpenAI.
+    try {
+      const n = req.contexts.length;
+      const q = await peekImageQuota(req.orgId);
+      if (q.remaining < n) {
+        return res.status(429).json({
+          error: `Voce precisa de ${n} imagens mas so tem ${q.remaining} na cota deste mes. Faca upgrade do plano.`,
+          quota: q,
+        });
+      }
+      next();
+    } catch (e) { next(e); }
+  },
   async (req, res, next) => {
     const c = req.carousel;
+    const theme = c.raw_input?.theme || null;
     try {
-      const theme = c.raw_input?.theme || null;
-      const { buffer, mime } = await generateCoverImage({
-        niche: c.niche, theme, title: c.title, quality: 'medium',
-      });
-      await query(
-        `UPDATE carousels SET cover_image_data = $1, cover_image_mime = $2,
-                cover_image_updated_at = now(), updated_at = now()
-           WHERE id = $3 AND organization_id = $4`,
-        [buffer, mime, c.id, req.orgId]
+      // Gera todas em paralelo, tolerando falha individual.
+      const results = await Promise.allSettled(
+        req.contexts.map(({ text }) => {
+          const prompt = buildSlidePrompt({ niche: c.niche, theme, slideText: text });
+          return generateImageFromPrompt(prompt, 'medium');
+        })
       );
+
+      let okCount = 0, failCount = 0, noKey = false;
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const idx = req.contexts[i].index;
+        if (r.status === 'fulfilled') {
+          await query(
+            `INSERT INTO carousel_slide_images (carousel_id, organization_id, slide_index, image_data, image_mime, updated_at)
+             VALUES ($1, $2, $3, $4, $5, now())
+             ON CONFLICT (carousel_id, slide_index) DO UPDATE SET
+               image_data = EXCLUDED.image_data, image_mime = EXCLUDED.image_mime, updated_at = now()`,
+            [c.id, req.orgId, idx, r.value.buffer, r.value.mime]
+          );
+          okCount++;
+        } else {
+          failCount++;
+          if (r.reason?.code === 'NO_OPENAI_KEY') noKey = true;
+        }
+      }
+
+      if (okCount === 0) {
+        if (noKey) return res.status(503).json({ error: 'Geracao de imagem indisponivel (chave da OpenAI nao configurada).' });
+        return res.status(502).json({ error: 'Nao foi possivel gerar as imagens. Tente novamente.' });
+      }
+
+      // Debita SO o que gerou (apos sucesso). Timeout antes daqui = cobranca zero.
+      const quota = await debitImageQuotaN(req.orgId, okCount);
+
       await logUsage({
         organizationId: req.orgId, userId: req.session.userId,
-        kind: 'carousel_cover_image', model: 'gpt-image-1',
+        kind: 'carousel_slide_images', model: 'gpt-image-1',
       });
-      res.json({ ok: true, cover_url: `/api/carousels/${c.id}/cover?v=${Date.now()}`, quota: req.imgQuota });
-    } catch (err) {
-      // Falhou a geracao: devolve a cota reservada.
-      try { await refundImageQuota(req.orgId); } catch {}
-      if (err.code === 'NO_OPENAI_KEY') {
-        return res.status(503).json({ error: 'Geracao de imagem indisponivel (chave da OpenAI nao configurada). Avise o administrador.' });
+
+      const v = Date.now();
+      const images = {};
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'fulfilled') {
+          const idx = req.contexts[i].index;
+          images[idx] = `/api/carousels/${c.id}/slide-image/${idx}?v=${v}`;
+        }
       }
+      res.json({ ok: true, generated: okCount, failed: failCount, images, quota });
+    } catch (err) {
       next(err);
     }
   }
 );
 
-// ===== Remove a imagem de capa =====
-router.delete('/:id/cover', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
+// ===== Remove todas as imagens do carrossel =====
+router.delete('/:id/images', requireOrgRole('owner', 'collaborator'), async (req, res, next) => {
   try {
-    const r = await query(
-      `UPDATE carousels SET cover_image_data = NULL, cover_image_mime = NULL,
-              cover_image_updated_at = now(), updated_at = now()
-         WHERE id = $1 AND organization_id = $2 RETURNING id`,
-      [req.params.id, req.orgId]
-    );
-    if (r.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
+    const cr = await query('SELECT id FROM carousels WHERE id = $1 AND organization_id = $2', [req.params.id, req.orgId]);
+    if (cr.rowCount === 0) return res.status(404).json({ error: 'Carrossel nao encontrado' });
+    await query('DELETE FROM carousel_slide_images WHERE carousel_id = $1', [req.params.id]);
     res.json({ ok: true });
   } catch (err) { next(err); }
 });
@@ -345,7 +414,13 @@ router.post('/:id/export/drive', requireOrgRole('owner', 'collaborator'), async 
     const integ = await getFreshGoogleToken(req.orgId);
     if (!integ) return res.status(409).json({ error: 'Conecte sua conta do Google Drive em Configuracoes primeiro.' });
 
-    if (carousel.cover_image_data) carousel.cover_buffer = Buffer.from(carousel.cover_image_data);
+    // Imagens de fundo por slide (slide_index -> Buffer) pro PDF.
+    const imgs = await query(
+      `SELECT slide_index, image_data FROM carousel_slide_images WHERE carousel_id = $1`,
+      [carousel.id]
+    );
+    carousel.slide_images = {};
+    for (const row of imgs.rows) carousel.slide_images[row.slide_index] = Buffer.from(row.image_data);
     const pdf = await carouselPdf(carousel);
     // Prefere a pasta do proprio cliente; senao a pasta SocialFlow da org.
     const cf = await query('SELECT drive_folder_id FROM clients WHERE id = $1', [carousel.client_id]);

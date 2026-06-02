@@ -92,6 +92,73 @@ async function refundImageQuota(orgId) {
   );
 }
 
+// Le a cota de imagem sem reservar (pra pre-checar antes de gerar).
+async function peekImageQuota(orgId) {
+  const r = await query(
+    `SELECT img_quota_limit, img_quota_used FROM organizations WHERE id = $1`,
+    [orgId]
+  );
+  if (r.rowCount === 0) { const e = new Error('Org nao encontrada'); e.code = 'ORG_NOT_FOUND'; throw e; }
+  const o = r.rows[0];
+  return { used: o.img_quota_used, limit: o.img_quota_limit, remaining: Math.max(0, o.img_quota_limit - o.img_quota_used) };
+}
+
+// Debita N imagens APOS a geracao (so cobra o que realmente gerou).
+// Usa greatest/least pra nunca passar do limite mesmo com concorrencia.
+async function debitImageQuotaN(orgId, n) {
+  if (!n || n <= 0) return null;
+  const r = await query(
+    `UPDATE organizations
+        SET img_quota_used = least(img_quota_limit, img_quota_used + $2)
+      WHERE id = $1
+      RETURNING img_quota_used AS used, img_quota_limit AS limit`,
+    [orgId, n]
+  );
+  const o = r.rows[0] || {};
+  return { used: o.used, limit: o.limit, remaining: Math.max(0, (o.limit || 0) - (o.used || 0)) };
+}
+
+// Reserva N imagens de uma vez (tudo-ou-nada). Usado quando o carrossel gera
+// uma imagem por slide. Lanca IMG_QUOTA_EXCEEDED se nao couber.
+async function reserveImageQuotaN(orgId, n) {
+  return await tx(async (c) => {
+    const res = await c.query(
+      `SELECT img_quota_limit, img_quota_used FROM organizations WHERE id = $1 FOR UPDATE`,
+      [orgId]
+    );
+    if (res.rowCount === 0) {
+      const e = new Error('Organizacao nao encontrada');
+      e.code = 'ORG_NOT_FOUND';
+      throw e;
+    }
+    const org = res.rows[0];
+    const remaining = org.img_quota_limit - org.img_quota_used;
+    if (remaining < n) {
+      const e = new Error('Cota de imagem insuficiente');
+      e.code = 'IMG_QUOTA_EXCEEDED';
+      e.remaining = Math.max(0, remaining);
+      e.quota = { used: org.img_quota_used, limit: org.img_quota_limit };
+      throw e;
+    }
+    await c.query(
+      `UPDATE organizations SET img_quota_used = img_quota_used + $2 WHERE id = $1`,
+      [orgId, n]
+    );
+    return {
+      used: org.img_quota_used + n,
+      limit: org.img_quota_limit,
+      remaining: org.img_quota_limit - org.img_quota_used - n,
+    };
+  });
+}
+
+async function refundImageQuotaN(orgId, n) {
+  await query(
+    `UPDATE organizations SET img_quota_used = greatest(0, img_quota_used - $2) WHERE id = $1`,
+    [orgId, n]
+  );
+}
+
 function requireImageQuota() {
   return async (req, res, next) => {
     try {
@@ -153,4 +220,5 @@ function requireQuota(kind) {
 module.exports = {
   checkAndReserveQuota, refundQuota, logUsage, requireQuota,
   checkAndReserveImageQuota, refundImageQuota, requireImageQuota,
+  reserveImageQuotaN, refundImageQuotaN, peekImageQuota, debitImageQuotaN,
 };

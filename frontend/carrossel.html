@@ -99,46 +99,52 @@
     let carousel = null;
     let template = null;
     let myRole = null;
-    let coverUrl = null; // URL da imagem de capa gerada por IA (se houver)
+    let imageSlides = {}; // { slideIndex: url } imagens de fundo geradas por IA
 
     function escapeHtml(s) {
       return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Se o slide tem imagem de IA, devolve o estilo de fundo (imagem + overlay
+    // escuro) e forca texto branco. Senao, usa a paleta do template.
+    function slideBg(slideNum, palette) {
+      const url = imageSlides[slideNum];
+      if (url) {
+        return {
+          style: `background-image: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.65)), url('${url}'); background-size: cover; background-position: center;`,
+          fg: '#ffffff', muted: 'rgba(255,255,255,0.85)', accent: '#ffffff', hasImg: true,
+        };
+      }
+      return { style: `background: ${palette.bg}; color: ${palette.fg};`, fg: palette.fg, muted: palette.muted, accent: palette.accent, hasImg: false };
     }
 
     function slideHtml(template, slideNum, slides) {
       const slideFields = template.fields.filter(f => f.slide === slideNum);
       const role = slideFields[0]?.role || 'content';
       const palette = template.palette;
-      const styles = `background: ${palette.bg}; color: ${palette.fg};`;
+      const bg = slideBg(slideNum, palette);
+      const num = `<div class="slide-num" style="color:${bg.fg}; z-index:2;">${slideNum}/${template.slide_count}</div>`;
 
       let inner = '';
       if (role === 'cover') {
         const h = slideFields.find(f => f.key.includes('headline') || f.key.includes('title'));
         const s = slideFields.find(f => f.key.includes('subhead') || f.key.includes('promise') || f.key.includes('subhead'));
-        // Se houver imagem de capa gerada por IA, usa como fundo com overlay escuro
-        // pra garantir legibilidade do texto branco por cima.
-        if (coverUrl) {
-          inner = `<h1 style="color:#fff; position:relative; z-index:2;">${escapeHtml(slides[h?.key] || '')}</h1>${s ? `<h2 style="color:rgba(255,255,255,0.85); position:relative; z-index:2;">${escapeHtml(slides[s.key] || '')}</h2>` : ''}`;
-          const bg = `background-image: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.65)), url('${coverUrl}'); background-size: cover; background-position: center;`;
-          return `<div class="slide slide-cover" style="${bg}"><div class="slide-num" style="color:#fff; z-index:2;">1/${template.slide_count}</div>${inner}</div>`;
-        }
-        inner = `<h1>${escapeHtml(slides[h?.key] || '')}</h1>${s ? `<h2 style="color:${palette.muted};">${escapeHtml(slides[s.key] || '')}</h2>` : ''}`;
-        return `<div class="slide slide-cover" style="${styles}"><div class="slide-num" style="color:${palette.fg};">1/${template.slide_count}</div>${inner}</div>`;
+        inner = `<h1 style="color:${bg.fg}; position:relative; z-index:2;">${escapeHtml(slides[h?.key] || '')}</h1>${s ? `<h2 style="color:${bg.muted}; position:relative; z-index:2;">${escapeHtml(slides[s.key] || '')}</h2>` : ''}`;
+        return `<div class="slide slide-cover" style="${bg.style}">${num}${inner}</div>`;
       } else if (role === 'step') {
         const t = slideFields.find(f => f.key.endsWith('_title'));
         const b = slideFields.find(f => f.key.endsWith('_body'));
         const stepNum = (t?.key.match(/_(\d+)_/) || [])[1] || '';
-        inner = `<h1 style="color:${palette.accent};">${stepNum}</h1><h2>${escapeHtml(slides[t?.key] || '')}</h2><p style="color:${palette.muted};">${escapeHtml(slides[b?.key] || '')}</p>`;
-        return `<div class="slide slide-step" style="${styles}"><div class="slide-num" style="color:${palette.fg};">${slideNum}/${template.slide_count}</div>${inner}</div>`;
+        inner = `<h1 style="color:${bg.accent}; position:relative; z-index:2;">${stepNum}</h1><h2 style="color:${bg.fg}; position:relative; z-index:2;">${escapeHtml(slides[t?.key] || '')}</h2><p style="color:${bg.muted}; position:relative; z-index:2;">${escapeHtml(slides[b?.key] || '')}</p>`;
+        return `<div class="slide slide-step" style="${bg.style}">${num}${inner}</div>`;
       } else if (role === 'cta') {
         const c = slideFields[0];
-        inner = `<h1>${escapeHtml(slides[c?.key] || '')}</h1>`;
-        return `<div class="slide slide-cta" style="${styles}"><div class="slide-num" style="color:${palette.fg};">${slideNum}/${template.slide_count}</div>${inner}</div>`;
+        inner = `<h1 style="color:${bg.fg}; position:relative; z-index:2;">${escapeHtml(slides[c?.key] || '')}</h1>`;
+        return `<div class="slide slide-cta" style="${bg.style}">${num}${inner}</div>`;
       } else {
-        // generic content
         const content = slideFields.map(f => escapeHtml(slides[f.key] || '')).filter(Boolean).join('<br><br>');
-        inner = `<h2>${content}</h2>`;
-        return `<div class="slide slide-content" style="${styles}"><div class="slide-num" style="color:${palette.fg};">${slideNum}/${template.slide_count}</div>${inner}</div>`;
+        inner = `<h2 style="color:${bg.fg}; position:relative; z-index:2;">${content}</h2>`;
+        return `<div class="slide slide-content" style="${bg.style}">${num}${inner}</div>`;
       }
     }
 
@@ -183,19 +189,40 @@
         });
         carousel = { ...carousel, ...r.carousel };
       } catch (err) {
-        alert('Erro ao salvar: ' + err.message);
+        await window.popup.alert('Erro ao salvar: ' + err.message, 'Ops');
       }
     }
 
+    // Garante que as imagens de fundo (IA) terminaram de carregar antes de
+    // rasterizar com html2canvas - senao o PNG sai com fundo em branco.
+    function preloadImages(urls) {
+      return Promise.all(urls.map(u => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = img.onerror = () => resolve();
+        img.src = u;
+      })));
+    }
+
     async function exportAll() {
-      const slides = document.querySelectorAll('#slides-row .slide');
-      for (let i = 0; i < slides.length; i++) {
-        const canvas = await html2canvas(slides[i], { scale: 2, backgroundColor: null });
-        const link = document.createElement('a');
-        link.download = `${(carousel.title || 'carrossel').replace(/\s+/g,'-')}-slide-${i+1}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        await new Promise(r => setTimeout(r, 200));
+      const btn = $('#export-all-btn');
+      const orig = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Preparando...';
+      try {
+        // pre-carrega todas as imagens de fundo geradas por IA
+        await preloadImages(Object.values(imageSlides));
+        const slides = document.querySelectorAll('#slides-row .slide');
+        for (let i = 0; i < slides.length; i++) {
+          const canvas = await html2canvas(slides[i], { scale: 2, backgroundColor: null, useCORS: true, allowTaint: false });
+          const link = document.createElement('a');
+          link.download = `${(carousel.title || 'carrossel').replace(/\s+/g,'-')}-slide-${i+1}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          await new Promise(r => setTimeout(r, 250));
+        }
+      } catch (err) {
+        await window.popup.alert('Erro ao baixar os slides: ' + err.message, 'Ops');
+      } finally {
+        btn.disabled = false; btn.textContent = orig;
       }
     }
 
@@ -211,8 +238,9 @@
         } else if (carousel.status === 'approved') {
           buttons.push(`<button class="btn" id="publish-btn">Marcar como publicado</button>`);
         }
-        buttons.push(`<button class="btn btn-ghost" id="cover-btn">${coverUrl ? 'Trocar capa IA' : '✨ Gerar capa com IA'}</button>`);
-        if (coverUrl) buttons.push(`<button class="btn btn-ghost" id="cover-remove-btn" style="color:var(--danger);">Remover capa</button>`);
+        const hasImgs = Object.keys(imageSlides).length > 0;
+        buttons.push(`<button class="btn btn-ghost" id="imgs-btn">${hasImgs ? '🔄 Regerar imagens IA' : '✨ Gerar imagens com IA'}</button>`);
+        if (hasImgs) buttons.push(`<button class="btn btn-ghost" id="imgs-remove-btn" style="color:var(--danger);">Remover imagens</button>`);
         buttons.push(`<button class="btn btn-ghost" id="export-drive-btn">Salvar no Drive (PDF)</button>`);
         buttons.push(`<button class="btn btn-ghost" id="del-btn" style="color:var(--danger);">Excluir</button>`);
       }
@@ -273,42 +301,50 @@
         location.href = '/carrosseis';
       });
 
-      const coverBtn = document.getElementById('cover-btn');
-      if (coverBtn) coverBtn.addEventListener('click', () => generateCover(coverBtn));
-      const coverRemove = document.getElementById('cover-remove-btn');
-      if (coverRemove) coverRemove.addEventListener('click', async () => {
+      const imgsBtn = document.getElementById('imgs-btn');
+      if (imgsBtn) imgsBtn.addEventListener('click', () => generateImages(imgsBtn));
+      const imgsRemove = document.getElementById('imgs-remove-btn');
+      if (imgsRemove) imgsRemove.addEventListener('click', async () => {
         const ok = await window.popup({
-          title: 'Remover capa', icon: '🖼️', danger: true,
-          message: 'A imagem de capa sera removida (o slide volta ao estilo limpo).',
+          title: 'Remover imagens', icon: '🖼️', danger: true,
+          message: 'As imagens de fundo de todos os slides serao removidas (voltam ao estilo limpo).',
           confirmText: 'Remover', cancelText: 'Cancelar',
         });
         if (!ok) return;
-        await window.api.del('/api/carousels/' + id + '/cover');
-        coverUrl = null;
+        await window.api.del('/api/carousels/' + id + '/images');
+        imageSlides = {};
         renderPreview();
         renderActions();
       });
     }
 
-    async function generateCover(btn) {
+    async function generateImages(btn) {
       const orig = btn.textContent;
+      const total = template.slide_count;
+      const confirmGen = await window.popup({
+        title: 'Gerar imagens com IA', icon: '✨',
+        message: `Vou gerar ${total} imagens de fundo (1 por slide). Isso consome ${total} da sua cota de imagem do mes. Continuar?`,
+        confirmText: 'Gerar', cancelText: 'Cancelar',
+      });
+      if (!confirmGen) return;
+
       btn.disabled = true;
-      btn.textContent = 'Gerando imagem...';
+      btn.textContent = `Gerando ${total} imagens... (pode levar ~1 min)`;
       try {
-        const r = await window.api.post('/api/carousels/' + id + '/cover/generate');
-        coverUrl = r.cover_url;
+        const r = await window.api.post('/api/carousels/' + id + '/images/generate');
+        imageSlides = r.images || {};
         renderPreview();
         renderActions();
-        const left = r.quota ? ` (${r.quota.remaining} restantes este mes)` : '';
-        await window.popup({ title: 'Capa gerada!', icon: '✨', message: 'A imagem de capa foi criada com IA e aplicada no primeiro slide.' + left });
+        const extra = r.failed ? ` (${r.failed} falharam e nao foram cobradas)` : '';
+        await window.popup({ title: 'Imagens geradas!', icon: '✨', message: `${r.generated} imagem(ns) criada(s) e aplicada(s) nos slides.${extra}` });
       } catch (err) {
         btn.disabled = false; btn.textContent = orig;
         if (err.status === 429) {
-          await window.popup({ title: 'Limite de imagens atingido', icon: '🚦', message: err.message, confirmText: 'Entendi' });
+          await window.popup({ title: 'Cota de imagem insuficiente', icon: '🚦', message: err.message, confirmText: 'Entendi' });
         } else if (err.status === 503) {
           await window.popup.alert(err.message, 'Indisponivel');
         } else {
-          await window.popup.alert('Erro ao gerar imagem: ' + err.message, 'Ops');
+          await window.popup.alert('Erro ao gerar imagens: ' + err.message, 'Ops');
         }
       }
     }
@@ -326,7 +362,12 @@
       try {
         const { carousel: c } = await window.api.get('/api/carousels/' + id);
         carousel = c;
-        if (c.has_cover) coverUrl = '/api/carousels/' + id + '/cover?v=' + new Date(c.updated_at).getTime();
+        // Monta o mapa de imagens de fundo ja geradas (slideIndex -> url).
+        imageSlides = {};
+        const v = new Date(c.updated_at).getTime();
+        (c.image_slides || []).forEach((idx) => {
+          imageSlides[idx] = '/api/carousels/' + id + '/slide-image/' + idx + '?v=' + v;
+        });
         $('#title').textContent = c.title;
         document.title = `${c.title} - SocialFlow`;
         const { template: t } = await window.api.get('/api/carousels/templates/' + c.template_id);
@@ -336,7 +377,7 @@
         renderActions();
       } catch (err) {
         if (err.status === 404) {
-          alert('Carrossel nao encontrado');
+          await window.popup.alert('Carrossel nao encontrado', 'Ops');
           location.href = '/carrosseis';
         }
       }
