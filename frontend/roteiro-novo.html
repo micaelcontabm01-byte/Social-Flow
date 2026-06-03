@@ -36,6 +36,7 @@
       <a href="/roteiros" class="nav-item active">Roteiros</a>
       <a href="/carrosseis" class="nav-item">Carrosseis</a>
       <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/edicao" class="nav-item">Edicao</a>
       <a href="/materiais" class="nav-item">Materiais</a>
       <div style="flex:1"></div>
       <a href="/billing" class="nav-item">Planos e cobranca</a>
@@ -190,6 +191,14 @@
     });
     document.querySelector('.stage-btn[data-stage="topo"]').click();
     document.querySelector('.format-btn[data-format="reel"]').click();
+
+    // Prefill vindo de uma ideia ("Virar roteiro"): tema, formato e etapa do funil.
+    const preTheme = params.get('theme');
+    if (preTheme) $('#theme').value = preTheme;
+    const preFunnel = params.get('funnel_stage');
+    if (preFunnel) { const b = document.querySelector(`.stage-btn[data-stage="${preFunnel}"]`); if (b) b.click(); }
+    const preFormat = params.get('format');
+    if (preFormat) { const b = document.querySelector(`.format-btn[data-format="${preFormat}"]`); if (b) b.click(); }
 
     $('#gen-form').addEventListener('submit', async (e) => {
       e.preventDefault();

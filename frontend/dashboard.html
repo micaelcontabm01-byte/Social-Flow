@@ -39,6 +39,7 @@
       <a href="/roteiros" class="nav-item">Roteiros</a>
       <a href="/carrosseis" class="nav-item">Carrosseis</a>
       <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/edicao" class="nav-item">Edicao</a>
       <a href="/materiais" class="nav-item">Materiais</a>
       <div style="flex:1"></div>
       <a href="/billing" class="nav-item">Planos e cobranca</a>
@@ -82,6 +83,15 @@
       <div class="quick-grid" id="quick-actions"></div>
 
       <div class="stats-grid" id="stats"></div>
+
+      <div id="overview-section" style="margin-bottom: 28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
+          <h3 style="font-size:15px; font-weight:700;">Visão geral do conteúdo</h3>
+          <button class="btn btn-ghost btn-sm" id="export-pdf-btn" style="display:none;">Exportar PDF</button>
+        </div>
+        <div class="stats-grid" id="overview-status"></div>
+        <div class="quick-grid" id="overview-format"></div>
+      </div>
 
       <div class="activity-grid">
         <div class="card chart-card">
@@ -217,7 +227,47 @@
       }
 
       try {
-        const { stats, recent, weekly } = await window.api.get('/api/dashboard/stats');
+        const { stats, recent, weekly, overview } = await window.api.get('/api/dashboard/stats');
+
+        // Visao geral: conteudo aprovado / pendente / material bruto + por tipo.
+        if (overview) {
+          const ov = [
+            { label: 'Conteúdo aprovado', value: overview.by_status.approved, sub: 'roteiros + carrosséis' },
+            { label: 'Pendentes', value: overview.by_status.pending_approval, sub: 'aguardando aprovação' },
+            {
+              label: 'Material bruto',
+              value: `${overview.raw_material.with_drive}<span style="font-size:14px; color:var(--text-3); font-weight:500;"> / ${overview.raw_material.total}</span>`,
+              sub: 'clientes com pasta no Drive',
+            },
+          ];
+          document.getElementById('overview-status').innerHTML = ov.map((c, i) => `
+            <div class="card stat-card fade-up" style="animation-delay:${i * 60}ms;">
+              <div class="label">${c.label}</div>
+              <div class="value">${c.value}</div>
+              <div class="sub">${c.sub}</div>
+            </div>`).join('');
+
+          const TYPES = [
+            { key: 'reel', label: 'Reels', desc: 'vídeos curtos' },
+            { key: 'carrossel', label: 'Carrossel', desc: 'múltiplos slides' },
+            { key: 'post', label: 'Post estático', desc: 'imagem + legenda' },
+            { key: 'story', label: 'Stories', desc: 'sequência rápida' },
+          ];
+          document.getElementById('overview-format').innerHTML = TYPES.map((t, i) => `
+            <div class="quick fade-up" style="animation-delay:${i * 60}ms; cursor:default;">
+              <div class="icon">${overview.by_format[t.key] ?? 0}</div>
+              <div><div class="qt">${t.label}</div><div class="qd">${t.desc}</div></div>
+            </div>`).join('');
+        }
+
+        // Botao de PDF (apenas BLACK).
+        if (me.plan_code === 'black' && !isClient) {
+          const pdfBtn = document.getElementById('export-pdf-btn');
+          pdfBtn.style.display = 'inline-flex';
+          pdfBtn.addEventListener('click', () => {
+            window.open('/api/dashboard/pdf', '_blank');
+          });
+        }
         const scriptsSpark = weekly.map(w => w.scripts_created);
         const approvedSpark = weekly.map(w => w.approved);
 

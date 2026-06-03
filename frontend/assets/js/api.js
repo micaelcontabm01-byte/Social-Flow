@@ -175,7 +175,7 @@ window.initSidebarToggle = function () {
 window.applySidebarForRole = function (role) {
   if (role !== 'client') return;
   // Client role: esconde rotas internas da agencia
-  const hidden = ['Clientes', 'Personas', 'Configuracoes', 'Planos e cobranca'];
+  const hidden = ['Clientes', 'Personas', 'Configuracoes', 'Planos e cobranca', 'Edicao'];
   document.querySelectorAll('.sidebar .nav-item').forEach((el) => {
     const text = (el.textContent || '').trim();
     if (hidden.includes(text)) el.style.display = 'none';

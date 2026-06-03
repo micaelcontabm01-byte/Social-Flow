@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 
 :root {
   /* Paleta inspirada na identidade da Mary (@_smaryy_): creme quente + marrom chocolate */
@@ -300,11 +300,11 @@ label {
   letter-spacing: -0.005em;
 }
 .hero h1 {
-  font-family: var(--font-display);
+  font-family: "Montserrat", var(--font);
   font-size: clamp(38px, 6.2vw, 68px);
   line-height: 1.02;
   letter-spacing: -0.02em;
-  font-weight: 600;
+  font-weight: 800;
   font-optical-sizing: auto;
   margin-bottom: 22px;
 }
@@ -474,6 +474,7 @@ label {
 
 /* faixa de "conversa" decorativa */
 .chat-strip { display: flex; flex-wrap: wrap; gap: 10px 14px; justify-content: center; max-width: 640px; margin: 0 auto; }
+.chat-strip .chat-bubble, .chat-strip .chat-bubble.right { border-radius: 999px; }
 .chat-strip .chat-bubble:nth-child(even) { align-self: flex-end; }
 
 /* ===== Secao da Mary (expert) ===== */
@@ -495,6 +496,8 @@ label {
 .mary p { color: rgba(244,233,216,0.82); font-size: 16px; line-height: 1.6; margin-bottom: 14px; }
 .mary .mary-chats { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .mary .mary-chats .chat-bubble:nth-child(even) { align-self: flex-end; }
+.mary .mary-photo { display: flex; justify-content: center; }
+.mary .mary-photo img { width: 100%; max-width: 420px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 20px; box-shadow: var(--shadow); }
 .mary .signature { font-family: var(--font-display); font-style: italic; font-size: 22px; color: var(--accent-2); margin-top: 10px; }
 
 /* ===== Mobile nav (hamburguer) ===== */

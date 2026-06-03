@@ -115,6 +115,39 @@ router.get('/notion/databases', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ===== Notion: lista paginas (pra escolher onde criar o database) =====
+router.get('/notion/pages', requireOrgRole('owner'), async (req, res, next) => {
+  try {
+    const integ = await getIntegration(req.orgId, 'notion');
+    if (!integ) return res.status(404).json({ error: 'Notion nao conectado' });
+    const pages = await notion.listPages(integ.access_token);
+    res.json({ pages });
+  } catch (err) { next(err); }
+});
+
+// ===== Notion: cria o database de conteudo automaticamente numa pagina =====
+router.post('/notion/database', requireOrgRole('owner'), async (req, res, next) => {
+  try {
+    const data = z.object({
+      parent_page_id: z.string().min(1),
+      title: z.string().max(200).optional(),
+    }).parse(req.body);
+    const integ = await getIntegration(req.orgId, 'notion');
+    if (!integ) return res.status(404).json({ error: 'Notion nao conectado' });
+    const db = await notion.createContentDatabase(
+      integ.access_token, data.parent_page_id, data.title || 'Conteudo - SocialFlow'
+    );
+    // Ja seleciona o database recem-criado como destino.
+    const config = await updateConfig(req.orgId, 'notion', {
+      database_id: db.id, database_title: db.title,
+    });
+    res.status(201).json({ database: db, config });
+  } catch (err) {
+    if (err.name === 'ZodError') return res.status(400).json({ error: err.errors });
+    next(err);
+  }
+});
+
 // ===== Notion: calendario (itens do database escolhido) =====
 // Restrito a owner/collaborator: o calendario editorial da agencia pode conter
 // conteudo de varios clientes, entao nao expomos pro role 'client'.

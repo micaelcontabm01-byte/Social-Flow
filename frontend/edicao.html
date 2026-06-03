@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edição - SocialFlow</title>
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .edit-client { margin-bottom: 18px; }
+    .edit-client h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .edit-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; background: var(--bg-2); border-radius: var(--radius-sm); margin-bottom: 8px; text-decoration: none; color: inherit; }
+    .edit-item:hover { background: var(--bg-3); }
+    .edit-item .title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .edit-item .meta { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .badge-type { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--brand-soft); color: var(--brand-strong); font-weight: 600; text-transform: uppercase; }
+    .badge-date { font-size: 12px; color: var(--text-3); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
+      <a href="/dashboard" class="nav-item">Dashboard</a>
+      <a href="/clientes" class="nav-item">Clientes</a>
+      <a href="/personas" class="nav-item">Personas</a>
+      <a href="/roteiros" class="nav-item">Roteiros</a>
+      <a href="/carrosseis" class="nav-item">Carrosseis</a>
+      <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/edicao" class="nav-item active">Edicao</a>
+      <a href="/materiais" class="nav-item">Materiais</a>
+      <div style="flex:1"></div>
+      <a href="/billing" class="nav-item">Planos e cobranca</a>
+      <a href="/configuracoes" class="nav-item">Configuracoes</a>
+      <button class="nav-item" id="logout-btn" style="text-align:left;">Sair</button>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <h1>Calendário de edição</h1>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px;">
+        <p class="muted small">
+          Tudo que ainda falta editar, por cliente: rascunhos de roteiros e carrosséis e ideias em produção.
+          Clique para abrir e finalizar.
+        </p>
+      </div>
+
+      <div id="content"></div>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function itemLink(item, clientId) {
+      if (item.kind === 'script') return `/roteiro?id=${item.id}`;
+      if (item.kind === 'carousel') return `/carrossel?id=${item.id}`;
+      return `/cliente?id=${clientId}`; // ideia: abre o cliente
+    }
+    const KIND_LABEL = { script: 'Roteiro', carousel: 'Carrossel', idea: 'Ideia' };
+
+    (async () => {
+      const me = await window.requireSession();
+      if (!me) return;
+      document.getElementById('logout-btn').addEventListener('click', async () => {
+        await window.api.post('/api/auth/logout');
+        window.location.href = '/';
+      });
+
+      const { clients, total } = await window.api.get('/api/dashboard/editing-queue');
+      if (!total) {
+        document.getElementById('content').innerHTML = `<div class="card" style="text-align:center; padding:40px;">
+          <p class="muted">Nada na fila de edição. Tudo em dia! 🎉</p>
+        </div>`;
+        return;
+      }
+      document.getElementById('content').innerHTML = clients.map(c => `
+        <div class="card edit-client">
+          <h3>${escapeHtml(c.client_name)} <span class="muted small" style="font-weight:500;">(${c.items.length})</span></h3>
+          ${c.items.map(it => `
+            <a class="edit-item" href="${itemLink(it, c.client_id)}">
+              <div class="title">${escapeHtml(it.title)}</div>
+              <div class="meta">
+                ${it.format ? `<span class="badge-type">${escapeHtml(it.format)}</span>` : ''}
+                <span class="badge-type" style="background:var(--bg-3); color:var(--text-2);">${KIND_LABEL[it.kind]}</span>
+                ${it.scheduled_for ? `<span class="badge-date">${new Date(it.scheduled_for).toLocaleDateString('pt-BR')}</span>` : ''}
+              </div>
+            </a>`).join('')}
+        </div>`).join('');
+    })();
+  </script>
+</body>
+</html>

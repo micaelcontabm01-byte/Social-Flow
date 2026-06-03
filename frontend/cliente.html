@@ -17,7 +17,7 @@
     .info-item { background: var(--bg-2); padding: 12px 14px; border-radius: var(--radius-sm); }
     .info-item label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin: 0 0 4px; }
     .info-item p { font-size: 15px; color: var(--text-1); }
-    .persona-card { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; transition: transform 0.12s, box-shadow 0.12s; }
+    .persona-card { display: block; text-decoration: none; color: inherit; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; transition: transform 0.12s, box-shadow 0.12s; }
     .persona-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
     .persona-card .name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
     .persona-card .meta { color: var(--text-2); font-size: 13px; margin-bottom: 10px; }
@@ -34,6 +34,7 @@
       <a href="/roteiros" class="nav-item">Roteiros</a>
       <a href="/carrosseis" class="nav-item">Carrosseis</a>
       <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/edicao" class="nav-item">Edicao</a>
       <a href="/materiais" class="nav-item">Materiais</a>
       <div style="flex:1"></div>
       <a href="/billing" class="nav-item">Planos e cobranca</a>
@@ -54,6 +55,8 @@
       <div class="tabs">
         <div class="tab active" data-tab="overview">Visao geral</div>
         <div class="tab" data-tab="personas">Personas</div>
+        <div class="tab" data-tab="planejamento" data-agency="1">Planejamento</div>
+        <div class="tab" data-tab="ideias" data-agency="1">Ideias</div>
         <div class="tab" data-tab="roteiros">Roteiros</div>
         <div class="tab" data-tab="carrosseis">Carrosseis</div>
         <div class="tab" data-tab="materiais">Materiais</div>
@@ -87,6 +90,27 @@
           <a class="btn" id="new-carousel-btn">+ Novo carrossel</a>
         </div>
         <div id="carousels-list"></div>
+      </div>
+
+      <div class="tab-content" id="tab-planejamento">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3>Planejamento de conteúdo</h3>
+          <button class="btn" id="gen-plan-btn">+ Criar planejamento com IA</button>
+        </div>
+        <div id="plan-generator" style="display:none;"></div>
+        <div id="plans-list"></div>
+      </div>
+
+      <div class="tab-content" id="tab-ideias">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px; flex-wrap:wrap;">
+          <h3>Ideias de conteúdo</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-ghost" id="distribute-btn">Gerar calendário</button>
+            <button class="btn" id="gen-ideas-btn">+ Gerar ideias com IA</button>
+          </div>
+        </div>
+        <div id="ideas-generator" style="display:none;"></div>
+        <div id="ideas-list"></div>
       </div>
 
       <div class="tab-content" id="tab-materiais">
@@ -269,6 +293,216 @@
       }
     }
 
+    // ===== Planejamento =====
+    const FORMAT_LABEL = { reel: 'Reel', carrossel: 'Carrossel', post: 'Post', story: 'Story' };
+    const FUNNEL_LABEL = { topo: 'TOPO', meio: 'MEIO', fundo: 'FUNDO' };
+    const IDEA_STATUS = { idea: 'Ideia', in_production: 'Em produção', done: 'Concluída' };
+
+    async function fetchPersonasOptions() {
+      try {
+        const { personas } = await window.api.get('/api/clients/' + clientId + '/personas');
+        return personas || [];
+      } catch { return []; }
+    }
+
+    function planCard(p) {
+      const pillars = Array.isArray(p.pillars) ? p.pillars : [];
+      const objectives = Array.isArray(p.objectives) ? p.objectives : [];
+      const mix = p.format_mix && typeof p.format_mix === 'object' ? p.format_mix : {};
+      const mixStr = Object.entries(mix).map(([k, v]) => `${FORMAT_LABEL[k] || k}: ${v}%`).join(' · ');
+      return `
+        <div class="card" style="margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:start;">
+            <div style="min-width:0;">
+              <div style="font-weight:700; font-size:16px;">${escapeHtml(p.title)}</div>
+              ${p.generated_by_ai ? '<span class="badge-ia">IA</span>' : ''}
+            </div>
+            <button class="btn btn-ghost btn-sm" data-del-plan="${p.id}" style="color:var(--danger); flex-shrink:0;">Excluir</button>
+          </div>
+          ${p.summary ? `<p class="muted" style="margin-top:8px; font-size:14px; line-height:1.5;">${escapeHtml(p.summary)}</p>` : ''}
+          ${p.cadence ? `<p style="margin-top:8px; font-size:13px;"><strong>Cadência:</strong> ${escapeHtml(p.cadence)}</p>` : ''}
+          ${mixStr ? `<p style="margin-top:4px; font-size:13px;"><strong>Mix:</strong> ${escapeHtml(mixStr)}</p>` : ''}
+          ${pillars.length ? `<div style="margin-top:10px;"><strong style="font-size:13px;">Pilares</strong><ul style="margin:6px 0 0 18px; font-size:13px; color:var(--text-2);">${pillars.map(pl => `<li><strong>${escapeHtml(pl.name || pl)}</strong>${pl.description ? ' — ' + escapeHtml(pl.description) : ''}</li>`).join('')}</ul></div>` : ''}
+          ${objectives.length ? `<div style="margin-top:10px;"><strong style="font-size:13px;">Objetivos</strong><ul style="margin:6px 0 0 18px; font-size:13px; color:var(--text-2);">${objectives.map(o => `<li>${escapeHtml(o)}</li>`).join('')}</ul></div>` : ''}
+        </div>`;
+    }
+
+    async function loadPlanning() {
+      const { plans } = await window.api.get('/api/planning?client_id=' + clientId);
+      const list = $('#plans-list');
+      if (!plans.length) {
+        list.innerHTML = `<div class="card" style="text-align:center; padding:36px;"><p class="muted">Nenhum planejamento ainda. Crie um com IA para guiar as ideias e o calendário.</p></div>`;
+      } else {
+        list.innerHTML = plans.map(planCard).join('');
+        list.querySelectorAll('[data-del-plan]').forEach(b => b.addEventListener('click', async () => {
+          if (!await window.popup.confirm('Excluir este planejamento?', { danger: true, confirmText: 'Excluir' })) return;
+          await window.api.del('/api/planning/' + b.dataset.delPlan);
+          loadPlanning();
+        }));
+      }
+    }
+
+    $('#gen-plan-btn').addEventListener('click', async () => {
+      const box = $('#plan-generator');
+      if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+      const personas = await fetchPersonasOptions();
+      box.style.display = 'block';
+      box.innerHTML = `
+        <div class="card" style="margin-bottom:14px;">
+          <div class="field"><label>Persona (opcional)</label>
+            <select id="plan-persona"><option value="">Sem persona</option>${personas.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Objetivo principal</label>
+            <input id="plan-goal" placeholder="Ex: ganhar autoridade e gerar leads" />
+          </div>
+          <div class="field"><label>Observações (opcional)</label>
+            <textarea id="plan-notes" rows="2" placeholder="Contexto, campanhas, datas importantes..."></textarea>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" id="plan-run">Gerar com IA</button>
+            <button class="btn btn-ghost" id="plan-cancel">Cancelar</button>
+          </div>
+          <div id="plan-preview" style="margin-top:14px;"></div>
+        </div>`;
+      $('#plan-cancel').addEventListener('click', () => { box.style.display = 'none'; });
+      $('#plan-run').addEventListener('click', async (e) => {
+        const btn = e.target; const orig = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Gerando...';
+        try {
+          const personaId = $('#plan-persona').value || null;
+          const goal = $('#plan-goal').value.trim() || null;
+          const notes = $('#plan-notes').value.trim() || null;
+          const { plan } = await window.api.post('/api/planning/generate', { client_id: clientId, persona_id: personaId, goal, notes });
+          const prev = $('#plan-preview');
+          prev.innerHTML = planCard({ ...plan, generated_by_ai: true }) +
+            `<div style="display:flex; gap:8px;"><button class="btn" id="plan-save">Salvar planejamento</button><button class="btn btn-ghost" id="plan-redo">Descartar</button></div>`;
+          $('#plan-save').addEventListener('click', async () => {
+            await window.api.post('/api/planning', {
+              client_id: clientId, persona_id: personaId,
+              title: plan.title, summary: plan.summary, pillars: plan.pillars || [],
+              cadence: plan.cadence, objectives: plan.objectives || [], format_mix: plan.format_mix || {},
+              generated_by_ai: true, raw_input: { goal, notes },
+            });
+            box.style.display = 'none';
+            loadPlanning();
+          });
+          $('#plan-redo').addEventListener('click', () => { prev.innerHTML = ''; });
+        } catch (err) {
+          await window.popup.alert(err.status === 429 ? 'Limite de IA atingido neste ciclo.' : ('Erro: ' + err.message), 'Ops');
+        } finally { btn.disabled = false; btn.textContent = orig; }
+      });
+    });
+
+    // ===== Ideias =====
+    function ideaCard(it) {
+      const dateVal = it.scheduled_for ? new Date(it.scheduled_for).toISOString().slice(0, 10) : '';
+      const themeQ = encodeURIComponent(it.title + (it.description ? ' — ' + it.description : ''));
+      const roteiroHref = `/roteiro-novo?client_id=${clientId}&theme=${themeQ}${it.format ? '&format=' + it.format : ''}${it.funnel_stage ? '&funnel_stage=' + it.funnel_stage : ''}`;
+      const carrosselHref = `/carrossel-novo?client_id=${clientId}&theme=${themeQ}`;
+      return `
+        <div class="card" style="margin-bottom:10px;" data-idea="${it.id}">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:start;">
+            <div style="min-width:0;">
+              <div style="font-weight:700; font-size:15px;">${escapeHtml(it.title)}</div>
+              ${it.description ? `<p class="muted" style="font-size:13px; margin-top:3px;">${escapeHtml(it.description)}</p>` : ''}
+              <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                ${it.format ? `<span class="badge-ia" style="background:var(--bg-3); color:var(--text-2);">${FORMAT_LABEL[it.format] || it.format}</span>` : ''}
+                ${it.funnel_stage ? `<span class="badge-ia" style="background:var(--bg-3); color:var(--text-2);">${FUNNEL_LABEL[it.funnel_stage] || it.funnel_stage}</span>` : ''}
+                ${it.pillar ? `<span class="badge-ia">${escapeHtml(it.pillar)}</span>` : ''}
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" data-del-idea="${it.id}" style="color:var(--danger); flex-shrink:0;">×</button>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <label style="margin:0; font-weight:500;">Agendar:</label>
+            <input type="date" value="${dateVal}" data-sched-idea="${it.id}" style="width:auto;" />
+            <select data-status-idea="${it.id}" style="width:auto;">
+              ${Object.entries(IDEA_STATUS).map(([k, v]) => `<option value="${k}" ${it.status === k ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+            <a class="btn btn-ghost btn-sm" href="${roteiroHref}">Virar roteiro</a>
+            <a class="btn btn-ghost btn-sm" href="${carrosselHref}">Virar carrossel</a>
+          </div>
+        </div>`;
+    }
+
+    async function loadIdeas() {
+      const { ideas } = await window.api.get('/api/ideas?client_id=' + clientId);
+      const list = $('#ideas-list');
+      if (!ideas.length) {
+        list.innerHTML = `<div class="card" style="text-align:center; padding:36px;"><p class="muted">Nenhuma ideia ainda. Gere ideias com IA (de preferência a partir de um planejamento).</p></div>`;
+        return;
+      }
+      list.innerHTML = ideas.map(ideaCard).join('');
+      list.querySelectorAll('[data-del-idea]').forEach(b => b.addEventListener('click', async () => {
+        await window.api.del('/api/ideas/' + b.dataset.delIdea);
+        loadIdeas();
+      }));
+      list.querySelectorAll('[data-sched-idea]').forEach(inp => inp.addEventListener('change', async () => {
+        const iso = inp.value ? new Date(inp.value + 'T09:00:00').toISOString() : null;
+        await window.api.put('/api/ideas/' + inp.dataset.schedIdea, { scheduled_for: iso });
+      }));
+      list.querySelectorAll('[data-status-idea]').forEach(sel => sel.addEventListener('change', async () => {
+        await window.api.put('/api/ideas/' + sel.dataset.statusIdea, { status: sel.value });
+      }));
+    }
+
+    $('#gen-ideas-btn').addEventListener('click', async () => {
+      const box = $('#ideas-generator');
+      if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+      const { plans } = await window.api.get('/api/planning?client_id=' + clientId);
+      box.style.display = 'block';
+      box.innerHTML = `
+        <div class="card" style="margin-bottom:14px;">
+          <div class="field"><label>Basear no planejamento (recomendado)</label>
+            <select id="ideas-plan"><option value="">Sem planejamento</option>${plans.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Quantas ideias</label>
+            <input id="ideas-count" type="number" min="1" max="20" value="10" style="width:120px;" />
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" id="ideas-run">Gerar com IA</button>
+            <button class="btn btn-ghost" id="ideas-cancel">Cancelar</button>
+          </div>
+          <div id="ideas-preview" style="margin-top:14px;"></div>
+        </div>`;
+      $('#ideas-cancel').addEventListener('click', () => { box.style.display = 'none'; });
+      $('#ideas-run').addEventListener('click', async (e) => {
+        const btn = e.target; const orig = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Gerando...';
+        try {
+          const planId = $('#ideas-plan').value || null;
+          const count = Math.min(20, Math.max(1, parseInt($('#ideas-count').value) || 10));
+          const { ideas } = await window.api.post('/api/ideas/generate', { client_id: clientId, plan_id: planId, count });
+          const prev = $('#ideas-preview');
+          prev.innerHTML = `
+            <p class="muted small" style="margin-bottom:8px;">${ideas.length} ideias geradas. Desmarque as que não quiser e salve.</p>
+            ${ideas.map((it, i) => `
+              <label style="display:flex; gap:10px; align-items:start; padding:10px 0; border-bottom:1px solid var(--border); font-weight:400;">
+                <input type="checkbox" checked data-idea-idx="${i}" style="width:auto; margin-top:3px;" />
+                <span style="font-size:13px;"><strong>${escapeHtml(it.title)}</strong> <span class="muted">(${FORMAT_LABEL[it.format] || it.format || '-'} · ${FUNNEL_LABEL[it.funnel_stage] || it.funnel_stage || '-'})</span><br>${escapeHtml(it.description || '')}</span>
+              </label>`).join('')}
+            <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="ideas-save">Salvar selecionadas</button></div>`;
+          $('#ideas-save').addEventListener('click', async () => {
+            const chosen = [...prev.querySelectorAll('[data-idea-idx]')].filter(c => c.checked).map(c => ideas[+c.dataset.ideaIdx]);
+            if (!chosen.length) { await window.popup.alert('Selecione ao menos uma ideia.'); return; }
+            await window.api.post('/api/ideas', { client_id: clientId, plan_id: planId, generated_by_ai: true, ideas: chosen });
+            box.style.display = 'none';
+            loadIdeas();
+          });
+        } catch (err) {
+          await window.popup.alert(err.status === 429 ? 'Limite de IA atingido neste ciclo.' : ('Erro: ' + err.message), 'Ops');
+        } finally { btn.disabled = false; btn.textContent = orig; }
+      });
+    });
+
+    $('#distribute-btn').addEventListener('click', async () => {
+      const ok = await window.popup.confirm('Distribuir as ideias sem data ao longo das próximas semanas (dias úteis)?', { confirmText: 'Gerar calendário' });
+      if (!ok) return;
+      const r = await window.api.post('/api/ideas/distribute', { client_id: clientId, per_week: 5 });
+      await window.popup.alert(r.scheduled ? `${r.scheduled} ideia(s) agendada(s). Veja em Calendário.` : 'Nenhuma ideia sem data para agendar.');
+      loadIdeas();
+    });
+
     $('#delete-btn').addEventListener('click', async () => {
       const ok = await window.popup({
         title: 'Arquivar cliente', icon: '🗄️', danger: true,
@@ -288,11 +522,20 @@
         await window.api.post('/api/auth/logout');
         window.location.href = '/';
       });
+      // Planejamento e Ideias sao internos da agencia: escondidos para o cliente.
+      const isAgency = me.role !== 'client';
+      if (!isAgency) {
+        document.querySelectorAll('[data-agency]').forEach(el => el.style.display = 'none');
+      }
       try {
         await loadClient();
         await loadPersonas();
         await loadScripts();
         await loadCarousels();
+        if (isAgency) {
+          await loadPlanning();
+          await loadIdeas();
+        }
       } catch (err) {
         if (err.status === 404) {
           alert('Cliente nao encontrado');

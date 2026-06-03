@@ -30,6 +30,7 @@
       <a href="/roteiros" class="nav-item">Roteiros</a>
       <a href="/carrosseis" class="nav-item">Carrosseis</a>
       <a href="/calendario" class="nav-item">Calendario</a>
+      <a href="/edicao" class="nav-item">Edicao</a>
       <a href="/materiais" class="nav-item">Materiais</a>
       <div style="flex:1"></div>
       <a href="/billing" class="nav-item">Planos e cobranca</a>
@@ -102,12 +103,19 @@
             <div class="name">Notion</div>
             <div class="meta" id="notion-meta">Verificando...</div>
             <div id="notion-db-wrap" style="display:none; margin-top:10px;">
-              <label for="notion-db" class="muted small">Database de destino dos roteiros</label>
-              <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+              <div class="muted small" style="font-weight:600; margin-bottom:6px;">Opção 1 — Conectar um database que você já tem no Notion</div>
+              <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
                 <select id="notion-db" style="min-width:220px;"></select>
+                <button class="btn btn-ghost btn-sm" id="notion-db-refresh" type="button">Atualizar lista</button>
                 <button class="btn btn-ghost" id="notion-db-save" type="button">Salvar</button>
                 <span class="small muted" id="notion-db-feedback"></span>
               </div>
+              <p class="small muted" style="margin-top:4px;">Já tem um projeto/calendário no Notion? Compartilhe ele com a integração (no Notion: <strong>•••</strong> → <strong>Conexões</strong> → <strong>SocialFlow</strong>) e clique em "Atualizar lista".</p>
+
+              <div class="muted small" style="font-weight:600; margin:14px 0 6px;">Opção 2 — Criar um novo database automaticamente</div>
+              <button class="btn btn-ghost btn-sm" id="notion-create-db" type="button">Criar database de conteúdo</button>
+              <span class="small muted" id="notion-create-feedback"></span>
+              <div id="notion-create-area" style="display:none; margin-top:8px;"></div>
             </div>
           </div>
           <div id="notion-actions"></div>
@@ -384,6 +392,17 @@
       }
     }
 
+    // Atualiza a lista de databases (depois de compartilhar um novo no Notion).
+    $('#notion-db-refresh').addEventListener('click', async () => {
+      const fb = $('#notion-db-feedback');
+      fb.textContent = 'Atualizando...';
+      const sel = $('#notion-db');
+      const current = sel.options[sel.selectedIndex]?.value || null;
+      await loadNotionDatabases(current);
+      fb.textContent = 'Lista atualizada.';
+      setTimeout(() => (fb.textContent = ''), 2500);
+    });
+
     $('#notion-db-save').addEventListener('click', async () => {
       const sel = $('#notion-db');
       const opt = sel.options[sel.selectedIndex];
@@ -398,6 +417,49 @@
         setTimeout(() => ($('#notion-db-feedback').textContent = ''), 2500);
       } catch (err) {
         $('#notion-db-feedback').textContent = 'Erro: ' + err.message;
+      }
+    });
+
+    // Criar database automaticamente: lista paginas compartilhadas e cria o DB dentro de uma.
+    $('#notion-create-db').addEventListener('click', async () => {
+      const area = $('#notion-create-area');
+      const fb = $('#notion-create-feedback');
+      if (area.style.display !== 'none') { area.style.display = 'none'; return; }
+      fb.textContent = 'Buscando páginas...';
+      try {
+        const { pages } = await window.api.get('/api/integrations/notion/pages');
+        fb.textContent = '';
+        if (!pages.length) {
+          area.style.display = 'block';
+          area.innerHTML = `<p class="small muted">Nenhuma página compartilhada com a integração. No Notion, abra a página onde quer o database, clique em <strong>•••</strong> → <strong>Conexões</strong> → adicione <strong>SocialFlow</strong>, e tente de novo.</p>`;
+          return;
+        }
+        area.style.display = 'block';
+        area.innerHTML = `
+          <label class="muted small">Criar o database dentro de qual página?</label>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+            <select id="notion-parent" style="min-width:220px;">
+              ${pages.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.title)}</option>`).join('')}
+            </select>
+            <button class="btn btn-sm" id="notion-create-go" type="button">Criar aqui</button>
+          </div>`;
+        $('#notion-create-go').addEventListener('click', async (e) => {
+          const btn = e.target; const orig = btn.textContent;
+          btn.disabled = true; btn.textContent = 'Criando...';
+          try {
+            const parentId = $('#notion-parent').value;
+            const { database } = await window.api.post('/api/integrations/notion/database', { parent_page_id: parentId });
+            area.style.display = 'none';
+            fb.textContent = 'Database criado e selecionado como destino!';
+            await loadNotionDatabases(database.id);
+            setTimeout(() => (fb.textContent = ''), 3500);
+          } catch (err) {
+            btn.disabled = false; btn.textContent = orig;
+            fb.textContent = 'Erro: ' + err.message;
+          }
+        });
+      } catch (err) {
+        fb.textContent = 'Erro: ' + err.message;
       }
     });
 

@@ -38,6 +38,7 @@
       <a href="/roteiros" class="nav-item">Roteiros</a>
       <a href="/carrosseis" class="nav-item">Carrosseis</a>
       <a href="/calendario" class="nav-item active">Calendario</a>
+      <a href="/edicao" class="nav-item">Edicao</a>
       <a href="/materiais" class="nav-item">Materiais</a>
       <div style="flex:1"></div>
       <a href="/billing" class="nav-item">Planos e cobranca</a>
@@ -150,6 +151,20 @@
       renderCalendar();
     }
 
+    // Ideias agendadas (campo scheduled_for) entram no calendario de conteudo.
+    // Para clientes a API devolve [], entao nao aparece nada extra.
+    async function fetchScheduledIdeas() {
+      try {
+        const { ideas } = await window.api.get('/api/ideas?scheduled=true');
+        return (ideas || []).map(it => ({
+          title: '💡 ' + it.title,
+          date: it.scheduled_for,
+          status: it.status,
+          url: `/cliente?id=${it.client_id}`,
+        }));
+      } catch { return []; }
+    }
+
     function indexEvents(items) {
       eventsByDay = {};
       noDateItems = [];
@@ -177,13 +192,15 @@
       const items = scripts
         .filter(s => s.scheduled_for)
         .map(s => ({ title: s.title, date: s.scheduled_for, status: s.status, url: `/roteiro?id=${s.id}` }));
-      if (items.length === 0) {
+      const ideas = await fetchScheduledIdeas();
+      const all = [...items, ...ideas];
+      if (all.length === 0) {
         $('#content').innerHTML = `<div class="card" style="text-align:center; padding:40px;">
           <p class="muted">Sem conteudo agendado ainda.</p>
         </div>`;
         return;
       }
-      indexEvents(items);
+      indexEvents(all);
       renderCalendar();
     }
 
@@ -193,7 +210,8 @@
         Mostrando o calendario do Notion: <strong>${escapeHtml(data.database_title)}</strong>.
         Cada item usa a primeira propriedade de data do database.
       </p>`;
-      indexEvents(data.items || []);
+      const ideas = await fetchScheduledIdeas();
+      indexEvents([...(data.items || []), ...ideas]);
       renderCalendar();
     }
 
