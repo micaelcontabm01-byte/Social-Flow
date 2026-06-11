@@ -52,6 +52,17 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, service: 'socialflow', time: new Date().toISOString() });
 });
 
+// Keep-alive: cron diario faz uma consulta leve pra o projeto Supabase (Free)
+// nao pausar por inatividade. SELECT 1 e inofensivo se chamado publicamente.
+app.get('/api/cron/keep-alive', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, db: 'up', time: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/me', requireAuth, meRoutes);
 app.use('/api/billing', billingRoutes);
