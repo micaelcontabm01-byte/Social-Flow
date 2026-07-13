@@ -1,0 +1,31 @@
+name: Cron jobs (monthly reports + keep-alive)
+
+# Substitui os crons declarativos do vercel.json - bate nos mesmos endpoints
+# via HTTP, funciona independente de qual host esta rodando o app.
+# CRON_SECRET precisa estar cadastrado em Settings > Secrets and variables >
+# Actions deste repo, com o mesmo valor configurado no servidor (Railway/Vercel).
+
+on:
+  schedule:
+    - cron: '0 8 1 * *'  # relatorio mensal - dia 1 as 08:00 UTC
+    - cron: '0 6 * * *'  # keep-alive diario - 06:00 UTC
+  workflow_dispatch: {}   # permite rodar manualmente pra testar
+
+jobs:
+  monthly-reports:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 8 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger monthly reports cron
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL || 'https://meusocialflow.com' }}/api/cron/monthly-reports"
+
+  keep-alive:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive endpoint
+        run: |
+          curl -sf "${{ vars.APP_URL || 'https://meusocialflow.com' }}/api/cron/keep-alive"
