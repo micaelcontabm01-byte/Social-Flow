@@ -125,7 +125,7 @@ window.requireSession = async function () {
   try {
     const me = await window.api.get('/api/me');
     window.applySidebarForRole(me.role);
-    window.initSidebarToggle();
+    window.initSidebarActions();
     // Aplica white-label se o usuario for cliente externo de uma org Pro/BLACK
     if (me.role === 'client' && me.organization_id) {
       window.applyBranding(me.organization_id).catch(() => {});
@@ -140,36 +140,70 @@ window.requireSession = async function () {
   }
 };
 
-// Botao de minimizar/restaurar a sidebar. Ao recolher, vira uma barra estreita
-// (rail) so com a logo - o proprio botao alterna os dois estados, sem botao
-// flutuante sobre o conteudo. Estado salvo em localStorage entre paginas.
-window.initSidebarToggle = function () {
+// Tema claro/escuro. Aplicado assim que o script roda (fora do await de
+// requireSession) pra minimizar o flash de tela clara antes de virar escura.
+// Persistido em localStorage, independente da sidebar existir ou nao na pagina.
+window.initTheme = function () {
+  let saved = 'light';
+  try { saved = localStorage.getItem('sf_theme') || 'light'; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', saved === 'dark' ? 'dark' : 'light');
+};
+window.initTheme();
+
+window.toggleTheme = function () {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('sf_theme', next); } catch (e) {}
+  document.dispatchEvent(new CustomEvent('sf:theme-changed', { detail: { theme: next } }));
+};
+
+// Botoes fixos no canto da sidebar: minimizar/restaurar (vira uma barra estreita
+// - rail - so com a logo) e alternar tema. Estados salvos em localStorage entre paginas.
+window.initSidebarActions = function () {
   const shell = document.querySelector('.app-shell');
   const sidebar = document.querySelector('.sidebar');
-  if (!shell || !sidebar || sidebar.querySelector('.sidebar-collapse-btn')) return;
+  if (!shell || !sidebar || sidebar.querySelector('.sidebar-actions')) return;
 
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'sidebar-collapse-btn';
-  sidebar.appendChild(btn);
+  const wrap = document.createElement('div');
+  wrap.className = 'sidebar-actions';
 
-  function sync() {
+  const themeBtn = document.createElement('button');
+  themeBtn.type = 'button';
+  function syncTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    themeBtn.innerHTML = isDark ? '&#9788;' : '&#9790;'; // sol (clicar = clarear) / lua (clicar = escurecer)
+    themeBtn.title = isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro';
+    themeBtn.setAttribute('aria-label', themeBtn.title);
+  }
+  themeBtn.addEventListener('click', () => { window.toggleTheme(); syncTheme(); });
+  syncTheme();
+  wrap.appendChild(themeBtn);
+
+  const collapseBtn = document.createElement('button');
+  collapseBtn.type = 'button';
+  function syncCollapse() {
     const collapsed = shell.classList.contains('sidebar-collapsed');
-    btn.innerHTML = collapsed ? '&raquo;' : '&laquo;';
-    btn.title = collapsed ? 'Expandir menu' : 'Minimizar menu';
-    btn.setAttribute('aria-label', btn.title);
+    collapseBtn.className = 'sidebar-collapse-btn';
+    collapseBtn.innerHTML = collapsed ? '&raquo;' : '&laquo;';
+    collapseBtn.title = collapsed ? 'Expandir menu' : 'Minimizar menu';
+    collapseBtn.setAttribute('aria-label', collapseBtn.title);
   }
   function setCollapsed(v) {
     shell.classList.toggle('sidebar-collapsed', v);
     try { localStorage.setItem('sf_sidebar_collapsed', v ? '1' : '0'); } catch (e) {}
-    sync();
+    syncCollapse();
   }
-  btn.addEventListener('click', () => setCollapsed(!shell.classList.contains('sidebar-collapsed')));
+  collapseBtn.addEventListener('click', () => setCollapsed(!shell.classList.contains('sidebar-collapsed')));
+  syncCollapse();
+  wrap.appendChild(collapseBtn);
 
-  let saved = '0';
-  try { saved = localStorage.getItem('sf_sidebar_collapsed') || '0'; } catch (e) {}
-  if (saved === '1') shell.classList.add('sidebar-collapsed');
-  sync();
+  sidebar.appendChild(wrap);
+
+  let savedCollapsed = '0';
+  try { savedCollapsed = localStorage.getItem('sf_sidebar_collapsed') || '0'; } catch (e) {}
+  if (savedCollapsed === '1') shell.classList.add('sidebar-collapsed');
+  syncCollapse();
 };
 
 window.applySidebarForRole = function (role) {
