@@ -46,7 +46,7 @@
   --bg-3: #2d2216;
   --border: #3c2e1f;
   --border-strong: #55402a;
-  --text-1: #f2e6d3;
+  --text-1: #f7f4ef;
   --text-2: #c2ad8f;
   --text-3: #8c775c;
   --brand: #a9805a;
@@ -55,6 +55,18 @@
   --brand-soft: rgba(192, 148, 106, 0.16);
   --brand-glow: rgba(220, 174, 130, 0.22);
 }
+
+/* Detalhes brancos no tema escuro - sem isso a tela fica marrom-sobre-marrom
+   sem nenhum ponto de contraste. So mexe no essencial: titulo da pagina e
+   item ativo da sidebar (o resto continua na paleta chocolate/creme). */
+:root[data-theme="dark"] .page-head h1 { color: #fff; }
+:root[data-theme="dark"] .nav-item.active {
+  background: var(--bg-3);
+  color: #fff;
+  box-shadow: inset 3px 0 0 #fff;
+}
+:root[data-theme="dark"] .sidebar-actions button { color: var(--text-2); }
+:root[data-theme="dark"] .sidebar-actions button:hover { color: #fff; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -152,6 +164,9 @@ label {
 .muted { color: var(--text-2); }
 .small { font-size: 13px; }
 .field { margin-bottom: 16px; }
+.field-error { display: none; color: var(--danger); font-size: 12px; margin-top: 6px; }
+.field-error.show { display: block; }
+.field input:invalid { box-shadow: none; }
 
 .alert { padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px; margin-bottom: 12px; }
 .alert-error { background: rgba(196, 83, 78, 0.08); color: var(--danger); border: 1px solid rgba(196, 83, 78, 0.3); }
@@ -222,17 +237,17 @@ label {
    o <div style="flex:1"> que empurra Sair/Configuracoes pro rodape entraria
    entre elas e o topo e empurraria os botoes pra fora da tela. */
 .sidebar-actions {
-  position: absolute;
-  top: 18px;
-  right: 8px;
   display: flex;
   align-items: center;
   gap: 2px;
+  padding: 0 10px 12px;
+  margin-top: -2px;
 }
 .sidebar-actions button {
   background: transparent;
   border: none;
   color: var(--text-3);
+  font-family: "Montserrat", var(--font);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
@@ -281,6 +296,7 @@ label {
 }
 .nav-item:hover { background: var(--bg-3); color: var(--text-1); }
 .nav-item.active { background: var(--brand-soft); color: var(--brand-strong); font-weight: 600; }
+.nav-item .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
 
 .main { padding: 32px 40px; overflow: auto; }
 

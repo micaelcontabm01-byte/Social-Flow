@@ -198,7 +198,10 @@ window.initSidebarActions = function () {
   syncCollapse();
   wrap.appendChild(collapseBtn);
 
-  sidebar.appendChild(wrap);
+  // Fica acima do "Planos e cobranca", no rodape do menu (junto com Configuracoes/Sair).
+  const billingLink = sidebar.querySelector('.nav-item[href="/billing"]');
+  if (billingLink) billingLink.before(wrap);
+  else sidebar.appendChild(wrap);
 
   let savedCollapsed = '0';
   try { savedCollapsed = localStorage.getItem('sf_sidebar_collapsed') || '0'; } catch (e) {}
@@ -209,7 +212,7 @@ window.initSidebarActions = function () {
 window.applySidebarForRole = function (role) {
   if (role !== 'client') return;
   // Client role: esconde rotas internas da agencia
-  const hidden = ['Clientes', 'Personas', 'Configuracoes', 'Planos e cobranca', 'Edicao'];
+  const hidden = ['Clientes', 'Personas', 'Configuracoes', 'Planos e cobranca', 'Edição'];
   document.querySelectorAll('.sidebar .nav-item').forEach((el) => {
     const text = (el.textContent || '').trim();
     if (hidden.includes(text)) el.style.display = 'none';
