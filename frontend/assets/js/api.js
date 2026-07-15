@@ -1,6 +1,13 @@
 // SocialFlow - helper de chamadas a API
+// __spaGen: geracao da navegacao SPA atual (ver roteador la embaixo). Uma
+// chamada iniciada por uma pagina que ja foi trocada (geracao antiga) nunca
+// resolve/rejeita - assim o script antigo, que ainda pode estar com um
+// `await` pendente, nunca chega a mexer em DOM que ja foi removido.
+window.__spaGen = 0;
+
 window.api = {
   async request(method, path, body) {
+    const gen = window.__spaGen;
     const opts = {
       method,
       credentials: 'same-origin',
@@ -14,6 +21,7 @@ window.api = {
     if (text) {
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
     }
+    if (gen !== window.__spaGen) return new Promise(() => {});
     if (!res.ok) {
       const err = new Error(data?.error || `HTTP ${res.status}`);
       err.status = res.status;
@@ -126,6 +134,7 @@ window.requireSession = async function () {
     const me = await window.api.get('/api/me');
     window.applySidebarForRole(me.role);
     window.initSidebarActions();
+    window.initSpaRouter();
     // Aplica white-label se o usuario for cliente externo de uma org Pro/BLACK
     if (me.role === 'client' && me.organization_id) {
       window.applyBranding(me.organization_id).catch(() => {});
@@ -158,28 +167,16 @@ window.toggleTheme = function () {
   document.dispatchEvent(new CustomEvent('sf:theme-changed', { detail: { theme: next } }));
 };
 
-// Botoes fixos no canto da sidebar: minimizar/restaurar (vira uma barra estreita
-// - rail - so com a logo) e alternar tema. Estados salvos em localStorage entre paginas.
+// Botao de minimizar/restaurar (fixo perto da logo) + botao de tema (item de
+// menu com label "Brilho", no rodape acima de "Planos e cobranca"). Estados
+// salvos em localStorage entre paginas.
 window.initSidebarActions = function () {
   const shell = document.querySelector('.app-shell');
   const sidebar = document.querySelector('.sidebar');
-  if (!shell || !sidebar || sidebar.querySelector('.sidebar-actions')) return;
+  if (!shell || !sidebar || sidebar.querySelector('.sidebar-collapse-wrap')) return;
 
-  const wrap = document.createElement('div');
-  wrap.className = 'sidebar-actions';
-
-  const themeBtn = document.createElement('button');
-  themeBtn.type = 'button';
-  function syncTheme() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    themeBtn.innerHTML = isDark ? '&#9788;' : '&#9790;'; // sol (clicar = clarear) / lua (clicar = escurecer)
-    themeBtn.title = isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro';
-    themeBtn.setAttribute('aria-label', themeBtn.title);
-  }
-  themeBtn.addEventListener('click', () => { window.toggleTheme(); syncTheme(); });
-  syncTheme();
-  wrap.appendChild(themeBtn);
-
+  const collapseWrap = document.createElement('div');
+  collapseWrap.className = 'sidebar-collapse-wrap';
   const collapseBtn = document.createElement('button');
   collapseBtn.type = 'button';
   function syncCollapse() {
@@ -195,13 +192,31 @@ window.initSidebarActions = function () {
     syncCollapse();
   }
   collapseBtn.addEventListener('click', () => setCollapsed(!shell.classList.contains('sidebar-collapsed')));
-  syncCollapse();
-  wrap.appendChild(collapseBtn);
+  collapseWrap.appendChild(collapseBtn);
+  sidebar.appendChild(collapseWrap);
+
+  const themeBtn = document.createElement('button');
+  themeBtn.type = 'button';
+  themeBtn.className = 'nav-item theme-toggle-item';
+  const themeIcon = document.createElement('span');
+  themeIcon.className = 'nav-icon-wrap';
+  const themeLabel = document.createElement('span');
+  themeLabel.textContent = 'Brilho';
+  function syncTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    themeIcon.innerHTML = isDark ? '&#9788;' : '&#9790;'; // sol (clicar = clarear) / lua (clicar = escurecer)
+    themeBtn.title = isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro';
+    themeBtn.setAttribute('aria-label', themeBtn.title);
+  }
+  themeBtn.addEventListener('click', () => { window.toggleTheme(); syncTheme(); });
+  themeBtn.appendChild(themeIcon);
+  themeBtn.appendChild(themeLabel);
+  syncTheme();
 
   // Fica acima do "Planos e cobranca", no rodape do menu (junto com Configuracoes/Sair).
   const billingLink = sidebar.querySelector('.nav-item[href="/billing"]');
-  if (billingLink) billingLink.before(wrap);
-  else sidebar.appendChild(wrap);
+  if (billingLink) billingLink.before(themeBtn);
+  else sidebar.appendChild(themeBtn);
 
   let savedCollapsed = '0';
   try { savedCollapsed = localStorage.getItem('sf_sidebar_collapsed') || '0'; } catch (e) {}
@@ -252,3 +267,115 @@ window.applyBranding = async function (orgId) {
     // Silencio - se branding falhar, mantem padrao SocialFlow
   }
 };
+
+// ===== Roteador SPA-lite: troca de pagina sem reload completo =====
+// So atua entre paginas que tem o app-shell (sidebar + main). Busca o HTML
+// da pagina destino, troca o <style> de pagina e o conteudo do app-shell
+// (main + modais) preservando a sidebar intacta, e reexecuta o script de
+// inicializacao da pagina nova. Qualquer erro no meio do caminho cai pra
+// navegacao normal do navegador - nunca deixa o app travado sem nav.
+const SPA_PAGES = new Set([
+  '/dashboard', '/clientes', '/cliente', '/personas', '/persona', '/persona-nova',
+  '/roteiros', '/roteiro', '/roteiro-novo', '/carrosseis', '/carrossel', '/carrossel-novo',
+  '/calendario', '/edicao', '/materiais', '/billing', '/configuracoes', '/relatorios',
+]);
+
+function isSpaLink(a) {
+  if (!a || a.target || a.hasAttribute('download')) return false;
+  let url;
+  try { url = new URL(a.href, location.href); } catch (e) { return false; }
+  if (url.origin !== location.origin) return false;
+  if (!SPA_PAGES.has(url.pathname)) return false;
+  return true;
+}
+
+async function spaNavigate(url, push) {
+  // Qualquer chamada de API que a pagina atual ainda tenha pendente vira
+  // "orfa" a partir daqui - ver window.__spaGen em window.api.request.
+  const gen = ++window.__spaGen;
+  const res = await fetch(url, { credentials: 'same-origin' });
+  if (!res.ok) throw new Error('fetch da pagina falhou: ' + res.status);
+  const html = await res.text();
+  // Se o usuario ja clicou em outro link enquanto isso carregava, uma
+  // geracao mais nova comecou - descarta esta navegacao (evita a corrida
+  // de duas paginas terminando de carregar fora de ordem).
+  if (gen !== window.__spaGen) return;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  const newShell = doc.querySelector('.app-shell');
+  const curShell = document.querySelector('.app-shell');
+  if (!newShell || !curShell) throw new Error('app-shell nao encontrado na pagina destino');
+
+  // Troca o <style> de pagina (cada pagina tem exatamente um, no <head>).
+  const newStyle = doc.head.querySelector('style');
+  const curStyle = document.head.querySelector('style');
+  if (newStyle && curStyle) curStyle.textContent = newStyle.textContent;
+
+  // Troca tudo dentro do app-shell exceto a sidebar (main da pagina).
+  const keepSidebar = curShell.querySelector(':scope > .sidebar');
+  Array.from(curShell.children).forEach((el) => { if (el !== keepSidebar) el.remove(); });
+  Array.from(newShell.children).forEach((el) => {
+    if (!el.classList.contains('sidebar')) curShell.appendChild(document.importNode(el, true));
+  });
+
+  // Modais (ex: "Novo cliente", "Convidar pessoa") ficam FORA do app-shell,
+  // direto no <body> - trocam a parte, senao a pagina nova fica sem modal
+  // e o script dela quebra procurando um elemento que nao existe.
+  document.querySelectorAll('body > .modal-backdrop').forEach((el) => el.remove());
+  Array.from(doc.querySelectorAll('body > .modal-backdrop')).forEach((el) => {
+    document.body.appendChild(document.importNode(el, true));
+  });
+
+  document.title = doc.title;
+  if (push) history.pushState({ spa: true }, '', url);
+
+  // Atualiza o item ativo do menu (antes vinha "de fabrica" no HTML estatico).
+  const path = new URL(url, location.href).pathname;
+  curShell.querySelectorAll('.sidebar .nav-item.active').forEach((el) => el.classList.remove('active'));
+  const activeLink = curShell.querySelector(`.sidebar .nav-item[href="${path}"]`);
+  if (activeLink) activeLink.classList.add('active');
+
+  // Reexecuta o script inline da pagina nova (o ultimo <script> sem src).
+  // Isolado numa IIFE: cada pagina declara suas proprias const/let/function
+  // no topo (ex: "const $ = ...", "const STATUS_LABEL = ..."), e sem isolar
+  // isso colide (SyntaxError de redeclaracao) a partir da segunda pagina que
+  // usa o mesmo nome. Funcoes que a propria pagina expõe de propósito (ex:
+  // pra um onclick="" inline) já fazem isso via "window.algo = ...", que
+  // continua funcionando normalmente de dentro da IIFE.
+  const scripts = Array.from(doc.querySelectorAll('script:not([src])'));
+  const inline = scripts[scripts.length - 1];
+  if (inline && inline.textContent.trim()) {
+    const s = document.createElement('script');
+    s.textContent = '(function () {\n' + inline.textContent + '\n})();';
+    document.body.appendChild(s);
+    s.remove();
+  }
+
+  window.scrollTo(0, 0);
+}
+
+function initSpaRouter() {
+  if (window.__spaRouterInitialized) return;
+  window.__spaRouterInitialized = true;
+
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest('a');
+    if (!isSpaLink(a)) return;
+    const url = a.href;
+    if (url === location.href) { e.preventDefault(); return; }
+    e.preventDefault();
+    spaNavigate(url, true).catch((err) => {
+      console.error('[spa] navegacao falhou, caindo pra reload normal:', err);
+      window.location.href = url;
+    });
+  });
+
+  window.addEventListener('popstate', () => {
+    spaNavigate(location.href, false).catch((err) => {
+      console.error('[spa] popstate falhou, recarregando:', err);
+      window.location.reload();
+    });
+  });
+}
+window.initSpaRouter = initSpaRouter;

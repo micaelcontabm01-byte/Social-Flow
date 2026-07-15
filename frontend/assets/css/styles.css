@@ -89,8 +89,8 @@
   color: #fff;
   box-shadow: inset 3px 0 0 #fff;
 }
-:root[data-theme="dark"] .sidebar-actions button { color: var(--text-2); }
-:root[data-theme="dark"] .sidebar-actions button:hover { color: #fff; }
+:root[data-theme="dark"] .sidebar-collapse-btn { color: var(--text-2); }
+:root[data-theme="dark"] .sidebar-collapse-btn:hover { color: #fff; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -256,31 +256,43 @@ label {
 }
 .sidebar .brand-mark { padding: 0 10px 22px; margin: 0; font-size: 16px; }
 
-/* Acoes fixas no canto da sidebar: minimizar/restaurar + alternar tema.
-   Sempre position:absolute (mesmo recolhida) - se virasse "static" ali dentro,
-   o <div style="flex:1"> que empurra Sair/Configuracoes pro rodape entraria
-   entre elas e o topo e empurraria os botoes pra fora da tela. */
-.sidebar-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 10px 12px;
-  margin-top: -2px;
+/* Botao de minimizar/restaurar: fixo perto da logo, sempre visivel (inclusive
+   com o menu recolhido - e o unico jeito de expandir de novo). Sempre
+   position:absolute pra nao ser empurrado pelo <div style="flex:1"> que
+   joga Sair/Configuracoes pro rodape. */
+.sidebar-collapse-wrap {
+  position: absolute;
+  top: 18px;
+  right: 8px;
 }
-.sidebar-actions button {
+.sidebar-collapse-btn {
   background: transparent;
   border: none;
   color: var(--text-3);
   font-family: "Montserrat", var(--font);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   padding: 5px 7px;
   border-radius: 7px;
   transition: all 120ms;
 }
-.sidebar-actions button:hover { background: var(--bg-3); color: var(--text-1); }
-.sidebar-collapse-btn { font-size: 18px; }
+.sidebar-collapse-btn:hover { background: var(--bg-3); color: var(--text-1); }
+
+/* Botao de tema (Brilho): reaproveita o visual de .nav-item, fica no rodape
+   do menu junto com Planos e cobranca / Configuracoes / Sair. */
+.nav-item.theme-toggle-item {
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: "Montserrat", var(--font);
+}
+.nav-item.theme-toggle-item .nav-icon-wrap {
+  width: 18px; height: 18px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; line-height: 1;
+}
 
 /* Estado recolhido: rail de 64px com a logo no topo */
 .app-shell.sidebar-collapsed { grid-template-columns: 64px 1fr; }
@@ -292,12 +304,11 @@ label {
   gap: 0;
   justify-content: center;
 }
-.app-shell.sidebar-collapsed .sidebar-actions {
+.app-shell.sidebar-collapsed .sidebar-collapse-wrap {
   top: 70px;
   right: auto;
   left: 50%;
   transform: translateX(-50%);
-  flex-direction: column;
 }
 
 @media (max-width: 760px) {
