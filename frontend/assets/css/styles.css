@@ -40,10 +40,10 @@
 /* Tema escuro - mesma paleta (creme/chocolate), invertida. Ativado via
    [data-theme="dark"] no <html>, alternado e persistido por assets/js/api.js. */
 :root[data-theme="dark"] {
-  --bg-0: #16110b;
-  --bg-1: #1e1710;
-  --bg-2: #241b12;
-  --bg-3: #2d2216;
+  --bg-0: #0d0c0b;
+  --bg-1: #17140f;
+  --bg-2: #1a1612;
+  --bg-3: #241f19;
   --border: #3c2e1f;
   --border-strong: #55402a;
   --text-1: #f7f4ef;
@@ -54,6 +54,30 @@
   --brand-strong: #dcae82;
   --brand-soft: rgba(192, 148, 106, 0.16);
   --brand-glow: rgba(220, 174, 130, 0.22);
+}
+
+/* "Baloes" (cards, modais, auth) ficam brancos no tema escuro - fundo da
+   pagina e preto, marrom fica so nos detalhes (bordas, icones, destaque).
+   Redefine as variaveis DENTRO desses containers pra tudo la dentro (label,
+   texto muted, input) se ajustar sozinho, sem caca a seletor por seletor. */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .auth-card,
+:root[data-theme="dark"] .feature-card,
+:root[data-theme="dark"] .step,
+:root[data-theme="dark"] .price-card,
+:root[data-theme="dark"] .recent-row,
+:root[data-theme="dark"] .stat-card {
+  --bg-1: #ffffff;
+  --bg-2: #f3ece0;
+  --bg-3: #e6dac6;
+  --border: #ddcdb2;
+  --border-strong: #bda47f;
+  --text-1: #2e1f12;
+  --text-2: #6b5544;
+  --text-3: #9a8364;
+  background: var(--bg-1);
+  color: var(--text-1);
 }
 
 /* Detalhes brancos no tema escuro - sem isso a tela fica marrom-sobre-marrom
