@@ -276,6 +276,18 @@ create unique index if not exists uq_invitations_active_email
   on invitations(organization_id, email) where accepted_at is null;
 
 -- ============================================================
+-- PASSWORD_RESETS - token de recuperacao de senha ("esqueci minha senha")
+-- ============================================================
+create table if not exists password_resets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  token text not null unique,
+  expires_at timestamptz not null default (now() + interval '1 hour'),
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- ============================================================
 -- NOTIFICATIONS
 -- ============================================================
 create table if not exists notifications (
@@ -411,6 +423,8 @@ create index if not exists idx_content_ideas_org_scheduled on content_ideas(orga
 create index if not exists idx_invitations_org on invitations(organization_id, created_at desc);
 create index if not exists idx_invitations_email on invitations(email) where accepted_at is null;
 
+create index if not exists idx_password_resets_user on password_resets(user_id, created_at desc);
+
 create index if not exists idx_notifications_user on notifications(user_id, created_at desc);
 create index if not exists idx_notifications_user_unread on notifications(user_id, created_at desc) where read_at is null;
 
@@ -444,6 +458,7 @@ alter table script_comments enable row level security;
 alter table notifications enable row level security;
 alter table carousels enable row level security;
 alter table invitations enable row level security;
+alter table password_resets enable row level security;
 alter table monthly_reports enable row level security;
 alter table org_integrations enable row level security;
 alter table carousel_slide_images enable row level security;

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redefinir senha - SocialFlow</title>
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
+
+      <div id="no-token" style="display:none;">
+        <h1 style="font-size: 18px; margin-bottom: 8px;">Link invalido</h1>
+        <p class="subtitle">Esse link nao tem um token valido.</p>
+        <a href="/esqueci-senha" class="btn btn-block">Pedir novo link</a>
+      </div>
+
+      <form id="form" style="display:none;">
+        <h1>Criar nova senha</h1>
+        <p class="subtitle">Escolha uma senha nova pra sua conta.</p>
+        <div id="alert"></div>
+        <div class="field">
+          <label for="password">Nova senha (minimo 8 caracteres)</label>
+          <input id="password" type="password" required minlength="8" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label for="password2">Confirme a nova senha</label>
+          <input id="password2" type="password" required minlength="8" autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn btn-block" id="submit-btn">Redefinir senha</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+
+    if (!token) {
+      document.getElementById('no-token').style.display = 'block';
+    } else {
+      document.getElementById('form').style.display = 'block';
+    }
+
+    const form = document.getElementById('form');
+    const alertBox = document.getElementById('alert');
+    const btn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.innerHTML = '';
+      const password = document.getElementById('password').value;
+      const password2 = document.getElementById('password2').value;
+      if (password !== password2) {
+        alertBox.innerHTML = `<div class="alert alert-error">As senhas nao sao iguais</div>`;
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Redefinindo...';
+      try {
+        await window.api.post('/api/auth/reset-password', { token, password });
+        form.innerHTML = `
+          <div class="alert alert-success">Senha redefinida! Ja pode entrar com a senha nova.</div>
+          <a href="/login" class="btn btn-block" style="margin-top:12px;">Ir pro login</a>`;
+      } catch (err) {
+        alertBox.innerHTML = `<div class="alert alert-error">${err.message || 'Falha ao redefinir'}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Redefinir senha';
+      }
+    });
+  </script>
+</body>
+</html>
