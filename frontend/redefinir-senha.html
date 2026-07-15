@@ -18,13 +18,14 @@
         <a href="/esqueci-senha" class="btn btn-block">Pedir novo link</a>
       </div>
 
-      <form id="form" style="display:none;">
+      <form id="form" style="display:none;" novalidate>
         <h1>Criar nova senha</h1>
         <p class="subtitle">Escolha uma senha nova pra sua conta.</p>
         <div id="alert"></div>
         <div class="field">
           <label for="password">Nova senha (minimo 8 caracteres)</label>
           <input id="password" type="password" required minlength="8" autocomplete="new-password" />
+          <span class="field-error" id="password-error">A senha precisa ter pelo menos 8 caracteres.</span>
         </div>
         <div class="field">
           <label for="password2">Confirme a nova senha</label>
@@ -49,11 +50,23 @@
     const form = document.getElementById('form');
     const alertBox = document.getElementById('alert');
     const btn = document.getElementById('submit-btn');
+    const passwordInput = document.getElementById('password');
+    const passwordError = document.getElementById('password-error');
+
+    function validatePassword() {
+      const ok = passwordInput.value.length >= 8;
+      passwordError.classList.toggle('show', !ok);
+      return ok;
+    }
+    passwordInput.addEventListener('input', () => {
+      if (passwordError.classList.contains('show')) validatePassword();
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       alertBox.innerHTML = '';
-      const password = document.getElementById('password').value;
+      if (!validatePassword()) return;
+      const password = passwordInput.value;
       const password2 = document.getElementById('password2').value;
       if (password !== password2) {
         alertBox.innerHTML = `<div class="alert alert-error">As senhas nao sao iguais</div>`;

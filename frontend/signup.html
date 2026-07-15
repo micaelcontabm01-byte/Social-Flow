@@ -9,7 +9,7 @@
 </head>
 <body>
   <div class="auth-wrap">
-    <form class="auth-card" id="signup-form">
+    <form class="auth-card" id="signup-form" novalidate>
       <div class="brand-mark"><img src="/assets/img/logo.svg" alt="" />SocialFlow</div>
       <h1>Criar sua conta</h1>
       <p class="subtitle">Crie sua conta e escolha o plano no proximo passo.</p>
@@ -29,6 +29,7 @@
       <div class="field">
         <label for="password">Senha (minimo 8 caracteres)</label>
         <input id="password" type="password" required autocomplete="new-password" minlength="8" />
+        <span class="field-error" id="password-error">A senha precisa ter pelo menos 8 caracteres.</span>
       </div>
 
       <button type="submit" class="btn btn-block" id="submit-btn">Criar conta</button>
@@ -44,14 +45,26 @@
     const form = document.getElementById('signup-form');
     const alertBox = document.getElementById('alert');
     const btn = document.getElementById('submit-btn');
+    const passwordInput = document.getElementById('password');
+    const passwordError = document.getElementById('password-error');
 
     function showError(msg) {
       alertBox.innerHTML = `<div class="alert alert-error">${msg}</div>`;
     }
 
+    function validatePassword() {
+      const ok = passwordInput.value.length >= 8;
+      passwordError.classList.toggle('show', !ok);
+      return ok;
+    }
+    passwordInput.addEventListener('input', () => {
+      if (passwordError.classList.contains('show')) validatePassword();
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       alertBox.innerHTML = '';
+      if (!validatePassword()) return;
       btn.disabled = true;
       btn.textContent = 'Criando...';
       try {
