@@ -93,7 +93,7 @@ router.post('/generate',
 
       // Reel gera roteiro cena por cena (body bem mais longo), entao precisa de mais espaco
       const maxTokens = data.format === 'reel' ? 4000 : 2500;
-      const ai = await generate({ system, prompt: user, maxTokens, temperature: 0.75 });
+      const ai = await generate({ system, prompt: user, maxTokens });
       let parsed;
       try {
         parsed = parseJsonFromText(ai.text);

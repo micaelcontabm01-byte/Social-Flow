@@ -75,7 +75,7 @@ router.post('/generate',
         notes: data.notes,
       });
 
-      const ai = await generate({ system, prompt: user, maxTokens: 1500, temperature: 0.8 });
+      const ai = await generate({ system, prompt: user, maxTokens: 1500 });
       let parsed;
       try {
         parsed = parseJsonFromText(ai.text);

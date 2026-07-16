@@ -66,7 +66,7 @@ router.post('/generate',
       const { system, user } = planningPrompt({
         client: req.client, persona, goal: data.goal, notes: data.notes,
       });
-      const ai = await generate({ system, prompt: user, maxTokens: 2500, temperature: 0.7 });
+      const ai = await generate({ system, prompt: user, maxTokens: 2500 });
       let parsed;
       try {
         parsed = parseJsonFromText(ai.text);

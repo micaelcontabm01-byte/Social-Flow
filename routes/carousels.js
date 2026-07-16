@@ -92,7 +92,7 @@ router.post('/generate',
         persona, template, theme: data.theme, scriptContent,
         goal: data.goal, notes: data.notes,
       });
-      const ai = await generate({ system, prompt: user, maxTokens: 2000, temperature: 0.75 });
+      const ai = await generate({ system, prompt: user, maxTokens: 2000 });
 
       let parsed;
       try { parsed = parseJsonFromText(ai.text); }
@@ -338,7 +338,7 @@ router.post('/:id/images/generate',
       const results = await Promise.allSettled(
         req.contexts.map(({ text }) => {
           const prompt = buildSlidePrompt({ niche: c.niche, theme, slideText: text });
-          return generateImageFromPrompt(prompt, 'medium');
+          return generateImageFromPrompt(prompt, 'high');
         })
       );
 

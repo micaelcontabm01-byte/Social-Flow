@@ -101,7 +101,7 @@ router.post('/generate',
         plan,
         count: data.count,
       });
-      const ai = await generate({ system, prompt: user, maxTokens: 3000, temperature: 0.8 });
+      const ai = await generate({ system, prompt: user, maxTokens: 3000 });
       let parsed;
       try {
         parsed = parseJsonFromText(ai.text);
