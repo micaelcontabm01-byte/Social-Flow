@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de Privacidade - SocialFlow</title>
+  <meta name="description" content="Como o SocialFlow coleta, usa e protege seus dados." />
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <style>
+    .legal { max-width: 760px; margin: 0 auto; padding: 60px 24px 80px; }
+    .legal h1 { font-family: var(--font-display); font-size: 34px; margin-bottom: 6px; }
+    .legal .updated { color: var(--text-2); font-size: 14px; margin-bottom: 36px; }
+    .legal h2 { font-size: 19px; margin: 32px 0 12px; letter-spacing: -0.01em; }
+    .legal p, .legal li { color: var(--text-2); font-size: 15px; line-height: 1.7; }
+    .legal ul { margin: 8px 0 8px 20px; }
+    .legal li { margin-bottom: 6px; }
+    .legal a { color: var(--brand); }
+    .legal .back { display: inline-block; margin-bottom: 24px; color: var(--text-2); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <nav class="landing-nav">
+    <div class="brand-mark"><img src="/assets/img/logo.svg" alt="SocialFlow" />SocialFlow</div>
+    <div class="links">
+      <a href="/login" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/signup" class="btn btn-ghost btn-sm">Criar conta</a>
+    </div>
+  </nav>
+
+  <main class="legal">
+    <a href="/" class="back">&larr; Voltar</a>
+    <h1>Política de Privacidade</h1>
+    <p class="updated">Última atualização: 16 de julho de 2026</p>
+
+    <p>Esta política explica quais dados o SocialFlow coleta, para que usamos, com quem compartilhamos e como você pode controlar suas informações. Escrevemos em linguagem direta, sem "juridiquês" desnecessário.</p>
+
+    <h2>1. Quem somos</h2>
+    <p>O SocialFlow (<a href="https://meusocialflow.com">meusocialflow.com</a>) é uma plataforma para agências e criadores de social media organizarem persona, roteiros, carrosséis, calendário editorial e aprovação de clientes em um só painel. Para dúvidas sobre privacidade, entre em contato pelo e-mail <a href="mailto:contato@meusocialflow.com">contato@meusocialflow.com</a>.</p>
+
+    <h2>2. Quais dados coletamos</h2>
+    <p>Coletamos apenas o necessário para o funcionamento da plataforma:</p>
+    <ul>
+      <li><strong>Dados de cadastro:</strong> nome, e-mail e senha (armazenada de forma criptografada, nunca em texto puro).</li>
+      <li><strong>Dados da sua operação:</strong> informações que você cadastra sobre seus clientes (nome, nicho, Instagram), personas, roteiros, carrosséis e planejamentos criados na plataforma — inclusive os gerados com auxílio de inteligência artificial.</li>
+      <li><strong>Dados de cobrança:</strong> seu plano ativo e histórico de assinatura. O pagamento em si (cartão, Pix, boleto) é processado inteiramente pela <strong>Lastlink</strong>, nosso parceiro de pagamentos — não armazenamos dados de cartão.</li>
+      <li><strong>Integrações que você conecta:</strong> se você conectar Notion ou Google Drive, guardamos um token de acesso (criptografado) para exportar conteúdo em seu nome. Veja a seção 4 para detalhes de escopo.</li>
+      <li><strong>Dados técnicos:</strong> endereço IP e informações básicas de sessão, usados apenas para manter você conectado com segurança (cookie de sessão).</li>
+    </ul>
+
+    <h2>3. Para que usamos seus dados</h2>
+    <ul>
+      <li>Fornecer as funcionalidades da plataforma (geração de conteúdo, organização de clientes, calendário, aprovação);</li>
+      <li>Processar pagamentos e gerenciar sua assinatura;</li>
+      <li>Enviar e-mails operacionais (convite de colaborador, redefinição de senha, notificação de aprovação, relatório mensal);</li>
+      <li>Melhorar a plataforma e corrigir problemas técnicos;</li>
+      <li>Cumprir obrigações legais quando aplicável.</li>
+    </ul>
+    <p>Não vendemos seus dados. Não usamos seus dados para treinar modelos de inteligência artificial de terceiros além do processamento necessário para gerar o conteúdo que você solicitou (ver seção 5).</p>
+
+    <h2>4. Integração com Google Drive e Notion</h2>
+    <p>Quando você conecta sua conta do Google Drive, usamos exclusivamente o escopo <code>drive.file</code> — isso significa que o SocialFlow só enxerga e cria arquivos que <strong>ele mesmo criou</strong> dentro do seu Drive (ex: PDFs de roteiro/carrossel exportados). Não temos acesso a nenhum outro arquivo da sua conta. Da mesma forma, a integração com o Notion só acessa o database específico que você autorizar. Você pode desconectar essas integrações a qualquer momento na tela de Configurações, o que revoga nosso acesso.</p>
+
+    <h2>5. Geração de conteúdo com inteligência artificial</h2>
+    <p>Para gerar persona, roteiros, ideias e planejamentos, enviamos as informações que você fornece (nicho do cliente, objetivo, tom de voz etc.) para provedores de IA (Anthropic e OpenAI) processarem e devolverem o conteúdo gerado. Esses provedores processam a informação para responder à sua solicitação, conforme as próprias políticas de uso de API deles, que não usam dados de API para treinar modelos por padrão.</p>
+
+    <h2>6. Com quem compartilhamos dados</h2>
+    <ul>
+      <li><strong>Lastlink</strong> — processamento de pagamento e assinatura;</li>
+      <li><strong>Anthropic e OpenAI</strong> — geração de texto e imagem por IA, apenas com o conteúdo necessário para cada solicitação;</li>
+      <li><strong>Resend</strong> — envio dos e-mails operacionais da plataforma;</li>
+      <li><strong>Google e Notion</strong> — apenas se você conectar essas integrações voluntariamente;</li>
+      <li><strong>Supabase / Railway</strong> — infraestrutura de banco de dados e hospedagem onde seus dados ficam armazenados.</li>
+    </ul>
+    <p>Não compartilhamos seus dados com terceiros para fins de publicidade.</p>
+
+    <h2>7. Por quanto tempo guardamos seus dados</h2>
+    <p>Mantemos seus dados enquanto sua conta estiver ativa. Se você cancelar sua assinatura, os dados ficam preservados por um período razoável (caso deseje reativar) e podem ser excluídos mediante solicitação — veja a seção 8.</p>
+
+    <h2>8. Seus direitos (LGPD)</h2>
+    <p>Conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), você pode a qualquer momento solicitar:</p>
+    <ul>
+      <li>Confirmação de quais dados temos sobre você;</li>
+      <li>Correção de dados incompletos ou desatualizados;</li>
+      <li>Exclusão dos seus dados pessoais;</li>
+      <li>Portabilidade dos seus dados a outro fornecedor;</li>
+      <li>Revogação do consentimento dado para integrações conectadas.</li>
+    </ul>
+    <p>Para exercer qualquer um desses direitos, escreva para <a href="mailto:contato@meusocialflow.com">contato@meusocialflow.com</a>.</p>
+
+    <h2>9. Segurança</h2>
+    <p>Senhas são armazenadas com hash criptográfico (bcrypt), nunca em texto puro. Tokens de integração são armazenados criptografados. O acesso ao banco de dados é restrito e protegido.</p>
+
+    <h2>10. Alterações nesta política</h2>
+    <p>Podemos atualizar esta política periodicamente. Mudanças relevantes serão comunicadas por e-mail ou aviso na plataforma.</p>
+
+    <h2>11. Contato</h2>
+    <p>Dúvidas sobre esta política? Escreva para <a href="mailto:contato@meusocialflow.com">contato@meusocialflow.com</a>.</p>
+  </main>
+
+  <footer class="landing-footer">
+    <div class="container">
+      <div class="brand-mark" style="justify-content:center; margin-bottom: 12px;"><img src="/assets/img/logo.svg" alt="SocialFlow" />SocialFlow</div>
+      <p>&copy; 2026 SocialFlow &middot; Feito no Brasil</p>
+    </div>
+  </footer>
+</body>
+</html>
